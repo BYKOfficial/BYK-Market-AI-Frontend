@@ -27,7 +27,7 @@ function App() {
     return <Register onRegister={() => setPage('login')} />;
   }
 
-  return <Login onLogin={handleLogin} />;
+  return <Login onLogin={handleLogin} onRegister={() => setPage('register')} />;
 }
 
 export default App;
