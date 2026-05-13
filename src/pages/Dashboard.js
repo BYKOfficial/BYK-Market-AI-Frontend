@@ -34,14 +34,8 @@ function Dashboard({ user, onLogout }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    fetchPrices();
-    fetchPortfolio();
-  }, []);
-
-  useEffect(() => {
-    if (!isMobile) setMenuOpen(false);
-  }, [isMobile]);
+  useEffect(() => { fetchPrices(); fetchPortfolio(); }, []);
+  useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
 
   const fetchPrices = async () => {
     try { const res = await getCryptoPrices(); setPrices(res.data.data); } catch (err) {}
@@ -102,10 +96,7 @@ function Dashboard({ user, onLogout }) {
   const handleSell = async (holding) => {
     const quantity = prompt(`Kitna ${holding.asset_name} bechna hai?`);
     if (!quantity) return;
-    let price = parseFloat(holding.avg_buy_price);
-    if (holding.asset_type === 'crypto') {
-      try { const priceRes = await getCryptoPrices(); const coin = priceRes.data.data.find(c => c.name === holding.asset_name); if (coin) price = coin.price_inr; } catch {}
-    }
+    let price = parseFloat(holding.current_price || holding.avg_buy_price);
     try {
       await sellAsset({ asset_name: holding.asset_name, quantity: parseFloat(quantity), price });
       showMessage(`✅ ${holding.asset_name} becha gaya!`); fetchPortfolio();
@@ -114,6 +105,9 @@ function Dashboard({ user, onLogout }) {
 
   const balance = portfolio ? parseFloat(portfolio.user.virtual_balance) : 0;
   const totalInvested = portfolio ? parseFloat(portfolio.total_invested) : 0;
+  const totalCurrentValue = portfolio ? parseFloat(portfolio.total_current_value || 0) : 0;
+  const totalPnL = portfolio ? parseFloat(portfolio.total_pnl || 0) : 0;
+  const totalPnLPercent = portfolio ? parseFloat(portfolio.total_pnl_percent || 0) : 0;
 
   const navItems = [
     { id: 'crypto', icon: '🪙', label: 'Crypto' },
@@ -203,7 +197,7 @@ function Dashboard({ user, onLogout }) {
         )}
 
         {portfolio && (
-          <div style={{ ...styles.statsBar, gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '10px' : '15px' }}>
+          <div style={{ ...styles.statsBar, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '10px' : '15px' }}>
             <div style={styles.statItem}>
               <span style={styles.statLabel}>💰 Balance</span>
               <span style={styles.statVal}>₹{balance.toLocaleString('en-IN')}</span>
@@ -213,8 +207,15 @@ function Dashboard({ user, onLogout }) {
               <span style={styles.statVal}>₹{totalInvested.toLocaleString('en-IN')}</span>
             </div>
             <div style={styles.statItem}>
-              <span style={styles.statLabel}>🏦 Holdings</span>
-              <span style={styles.statVal}>{portfolio.total_holdings}</span>
+              <span style={styles.statLabel}>💼 Current Value</span>
+              <span style={styles.statVal}>₹{totalCurrentValue.toLocaleString('en-IN')}</span>
+            </div>
+            <div style={styles.statItem}>
+              <span style={styles.statLabel}>📊 Total P&L</span>
+              <span style={{ ...styles.statVal, color: totalPnL >= 0 ? '#00ff88' : '#ff4444' }}>
+                {totalPnL >= 0 ? '▲' : '▼'} ₹{Math.abs(totalPnL).toLocaleString('en-IN')}
+                <span style={{ fontSize: '12px', marginLeft: '4px' }}>({totalPnLPercent}%)</span>
+              </span>
             </div>
           </div>
         )}
@@ -349,20 +350,55 @@ function Dashboard({ user, onLogout }) {
               </div>
             ) : (
               <div style={styles.holdingsList}>
-                {portfolio.holdings.map(holding => (
-                  <div key={holding.id} style={{ ...styles.holdingCard, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '12px' : '0' }}>
-                    <div style={styles.holdingLeft}>
-                      <div style={styles.holdingName}>{holding.asset_name}</div>
-                      <span style={styles.badge}>{holding.asset_type}</span>
-                      <div style={styles.holdingDetail}>Qty: {holding.quantity}</div>
-                      <div style={styles.holdingDetail}>Avg: ₹{parseFloat(holding.avg_buy_price).toLocaleString('en-IN')}</div>
+                {portfolio.holdings.map(holding => {
+                  const pnl = parseFloat(holding.pnl || 0);
+                  const pnlPercent = parseFloat(holding.pnl_percent || 0);
+                  const currentValue = parseFloat(holding.current_value || 0);
+                  const currentPrice = parseFloat(holding.current_price || holding.avg_buy_price);
+                  return (
+                    <div key={holding.id} style={{ ...styles.holdingCard, flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={styles.holdingName}>{holding.asset_name}</div>
+                          <span style={styles.badge}>{holding.asset_type}</span>
+                        </div>
+                        <div style={{
+                          background: pnl >= 0 ? '#00ff8815' : '#ff444415',
+                          border: `1px solid ${pnl >= 0 ? '#00ff88' : '#ff4444'}`,
+                          borderRadius: '10px',
+                          padding: '6px 14px',
+                          textAlign: 'right',
+                        }}>
+                          <div style={{ color: pnl >= 0 ? '#00ff88' : '#ff4444', fontWeight: 'bold', fontSize: '15px' }}>
+                            {pnl >= 0 ? '▲' : '▼'} ₹{Math.abs(pnl).toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ color: pnl >= 0 ? '#00ff88' : '#ff4444', fontSize: '11px' }}>
+                            {pnl >= 0 ? '+' : ''}{pnlPercent}%
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                        <div style={styles.miniStat}>
+                          <span style={styles.miniLabel}>Qty</span>
+                          <span style={styles.miniVal}>{holding.quantity}</span>
+                        </div>
+                        <div style={styles.miniStat}>
+                          <span style={styles.miniLabel}>Avg Buy</span>
+                          <span style={styles.miniVal}>₹{parseFloat(holding.avg_buy_price).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div style={styles.miniStat}>
+                          <span style={styles.miniLabel}>Current Price</span>
+                          <span style={styles.miniVal}>₹{currentPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div style={styles.miniStat}>
+                          <span style={styles.miniLabel}>Current Value</span>
+                          <span style={{ ...styles.miniVal, color: '#00d4ff' }}>₹{currentValue.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                      <button style={styles.sellBtn} onClick={() => handleSell(holding)}>🔴 Sell {holding.asset_name}</button>
                     </div>
-                    <div style={{ ...styles.holdingRight, display: 'flex', justifyContent: isMobile ? 'space-between' : 'flex-end', alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
-                      <div style={styles.holdingValue}>₹{(parseFloat(holding.quantity) * parseFloat(holding.avg_buy_price)).toLocaleString('en-IN')}</div>
-                      <button style={styles.sellBtn} onClick={() => handleSell(holding)}>Sell</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -463,7 +499,10 @@ const styles = {
   holdingDetail: { color: '#aaa', fontSize: '13px', margin: '2px 0' },
   holdingValue: { color: '#00ff88', fontWeight: 'bold', fontSize: '16px', marginBottom: '10px' },
   badge: { background: 'rgba(0,212,255,0.2)', color: '#00d4ff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginBottom: '8px', display: 'inline-block' },
-  sellBtn: { padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #ff4444, #cc0000)', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  sellBtn: { width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #ff4444, #cc0000)', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' },
+  miniStat: { background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '8px 12px', border: '1px solid rgba(255,255,255,0.06)' },
+  miniLabel: { display: 'block', color: '#666', fontSize: '11px', marginBottom: '3px' },
+  miniVal: { display: 'block', color: '#fff', fontWeight: 'bold', fontSize: '13px' },
   emptyState: { textAlign: 'center', color: '#aaa', marginTop: '80px' },
   emptyIcon: { fontSize: '60px', marginBottom: '20px' },
   txCard: { background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex' },
