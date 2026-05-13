@@ -27,6 +27,7 @@ function Dashboard({ user, onLogout }) {
   const [messageType, setMessageType] = useState('success');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [hoveredCard, setHoveredCard] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -40,7 +41,6 @@ function Dashboard({ user, onLogout }) {
   const fetchPrices = async () => {
     try { const res = await getCryptoPrices(); setPrices(res.data.data); } catch (err) {}
   };
-
   const fetchStocks = async () => {
     setStocksLoading(true);
     try {
@@ -54,26 +54,21 @@ function Dashboard({ user, onLogout }) {
     } catch (err) {}
     setStocksLoading(false);
   };
-
   const fetchPortfolio = async () => {
     try { const res = await getPortfolio(); setPortfolio(res.data.data); } catch (err) {}
   };
-
   const fetchTransactions = async () => {
     try { const res = await getTransactions(); setTransactions(res.data.data); } catch (err) {}
   };
-
   const fetchSignals = async () => {
     setSignalsLoading(true);
     try { const res = await getSignals(); setSignals(res.data.data); } catch (err) {}
     setSignalsLoading(false);
   };
-
   const showMessage = (msg, type = 'success') => {
     setMessage(msg); setMessageType(type);
     setTimeout(() => setMessage(''), 3000);
   };
-
   const handleBuyCrypto = async (coin) => {
     const quantity = prompt(`Kitna ${coin.name} kharidna hai?`);
     if (!quantity) return;
@@ -82,7 +77,6 @@ function Dashboard({ user, onLogout }) {
       showMessage(`✅ ${coin.name} kharida gaya!`); fetchPortfolio();
     } catch (err) { showMessage(err.response?.data?.message || 'Buy failed!', 'error'); }
   };
-
   const handleBuyStock = async (stock) => {
     if (!stock.price) return alert('Price load nahi hua!');
     const quantity = prompt(`Kitne ${stock.name} shares?`);
@@ -92,11 +86,10 @@ function Dashboard({ user, onLogout }) {
       showMessage(`✅ ${stock.name} kharida gaya!`); fetchPortfolio();
     } catch (err) { showMessage(err.response?.data?.message || 'Buy failed!', 'error'); }
   };
-
   const handleSell = async (holding) => {
     const quantity = prompt(`Kitna ${holding.asset_name} bechna hai?`);
     if (!quantity) return;
-    let price = parseFloat(holding.current_price || holding.avg_buy_price);
+    const price = parseFloat(holding.current_price || holding.avg_buy_price);
     try {
       await sellAsset({ asset_name: holding.asset_name, quantity: parseFloat(quantity), price });
       showMessage(`✅ ${holding.asset_name} becha gaya!`); fetchPortfolio();
@@ -126,277 +119,335 @@ function Dashboard({ user, onLogout }) {
     if (id === 'signals') fetchSignals();
   };
 
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a1a', color: '#fff' }}>
+  const GlassCard = ({ children, style = {}, hover = false, id }) => (
+    <div
+      onMouseEnter={() => hover && setHoveredCard(id)}
+      onMouseLeave={() => hover && setHoveredCard(null)}
+      style={{
+        background: hoveredCard === id
+          ? 'rgba(255,255,255,0.08)'
+          : 'rgba(255,255,255,0.04)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '16px',
+        border: hoveredCard === id
+          ? '1px solid rgba(0,212,255,0.3)'
+          : '1px solid rgba(255,255,255,0.08)',
+        transition: 'all 0.2s ease',
+        transform: hoveredCard === id ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hoveredCard === id
+          ? '0 8px 32px rgba(0,212,255,0.1)'
+          : '0 2px 8px rgba(0,0,0,0.2)',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
 
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(135deg, #050510 0%, #0a0a1a 50%, #050510 100%)', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+
+      {/* Ambient background blobs */}
+      {!isMobile && (
+        <>
+          <div style={{ position: 'fixed', top: '10%', left: '15%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+          <div style={{ position: 'fixed', bottom: '20%', right: '10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(0,255,136,0.04) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+        </>
+      )}
+
+      {/* Mobile Header */}
       {isMobile && (
-        <div style={styles.mobileHeader}>
-          <div style={styles.mobileLogo}>📈 BYK Market AI</div>
-          <div style={styles.mobileRight}>
-            <span style={styles.mobileBalance}>₹{balance.toLocaleString('en-IN')}</span>
-            <button style={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #00d4ff, #0099cc)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>📈</div>
+            <span style={{ color: '#fff', fontWeight: '700', fontSize: '16px', letterSpacing: '-0.5px' }}>BYK <span style={{ color: '#00d4ff' }}>Market</span></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ color: '#00ff88', fontWeight: '700', fontSize: '13px' }}>₹{balance.toLocaleString('en-IN')}</span>
+            <button style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontSize: '16px', cursor: 'pointer', borderRadius: '8px', padding: '5px 10px' }} onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? '✕' : '☰'}
             </button>
           </div>
         </div>
       )}
 
+      {/* Mobile Menu */}
       {isMobile && menuOpen && (
-        <div style={styles.mobileMenu}>
+        <div style={{ position: 'fixed', top: '56px', left: 0, right: 0, zIndex: 999, background: 'rgba(5,5,16,0.98)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map(item => (
             <button key={item.id}
-              style={activeTab === item.id ? { ...styles.mobileNavItem, ...styles.mobileNavActive } : styles.mobileNavItem}
+              style={{ padding: '13px 16px', borderRadius: '12px', border: 'none', background: activeTab === item.id ? 'rgba(0,212,255,0.12)' : 'transparent', color: activeTab === item.id ? '#00d4ff' : '#888', cursor: 'pointer', fontSize: '15px', textAlign: 'left', fontWeight: activeTab === item.id ? '600' : '400', borderLeft: activeTab === item.id ? '3px solid #00d4ff' : '3px solid transparent' }}
               onClick={() => handleNav(item.id)}>
               {item.icon} {item.label}
             </button>
           ))}
-          <button style={styles.mobileLogout} onClick={onLogout}>🚪 Logout</button>
+          <button style={{ padding: '13px 16px', borderRadius: '12px', border: 'none', background: 'rgba(255,68,68,0.08)', color: '#ff4444', cursor: 'pointer', fontSize: '15px', textAlign: 'left', marginTop: '4px' }} onClick={onLogout}>🚪 Logout</button>
         </div>
       )}
 
+      {/* Desktop Sidebar */}
       {!isMobile && (
-        <div style={styles.sidebar}>
-          <div style={styles.sidebarLogo}>📈 BYK</div>
-          <div style={styles.sidebarUser}>
-            <div style={styles.sidebarUserName}>👤 {user.name}</div>
-            <div style={styles.sidebarBalance}>₹{balance.toLocaleString('en-IN')}</div>
+        <div style={{ width: '240px', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', padding: '24px 0', position: 'fixed', height: '100vh', zIndex: 10 }}>
+          {/* Logo */}
+          <div style={{ padding: '0 20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📈</div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: '800', fontSize: '18px', letterSpacing: '-0.5px' }}>BYK <span style={{ color: '#00d4ff' }}>Market</span></div>
+                <div style={{ color: '#555', fontSize: '10px', letterSpacing: '1px' }}>AI TRADING</div>
+              </div>
+            </div>
+            {/* User Card */}
+            <div style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(0,102,255,0.05))', borderRadius: '12px', padding: '12px', border: '1px solid rgba(0,212,255,0.12)' }}>
+              <div style={{ color: '#888', fontSize: '11px', marginBottom: '2px' }}>👤 {user.name}</div>
+              <div style={{ color: '#00ff88', fontWeight: '700', fontSize: '18px' }}>₹{balance.toLocaleString('en-IN')}</div>
+              <div style={{ color: '#555', fontSize: '10px', marginTop: '2px' }}>Virtual Balance</div>
+            </div>
           </div>
-          <nav style={styles.nav}>
+
+          {/* Nav */}
+          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px' }}>
             {navItems.map(item => (
               <button key={item.id}
-                style={activeTab === item.id ? { ...styles.navItem, ...styles.navItemActive } : styles.navItem}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '12px', border: 'none', background: activeTab === item.id ? 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,102,255,0.08))' : 'transparent', color: activeTab === item.id ? '#00d4ff' : '#666', cursor: 'pointer', fontSize: '14px', textAlign: 'left', fontWeight: activeTab === item.id ? '600' : '400', borderLeft: activeTab === item.id ? '3px solid #00d4ff' : '3px solid transparent', transition: 'all 0.2s ease' }}
                 onClick={() => handleNav(item.id)}>
-                <span style={styles.navIcon}>{item.icon}</span>
+                <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 <span>{item.label}</span>
+                {activeTab === item.id && <span style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: '#00d4ff' }} />}
               </button>
             ))}
           </nav>
-          <button style={styles.logoutBtn} onClick={onLogout}>🚪 Logout</button>
+
+          <button style={{ margin: '12px', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,68,68,0.2)', background: 'rgba(255,68,68,0.06)', color: '#ff4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }} onClick={onLogout}>🚪 Logout</button>
         </div>
       )}
 
-      <div style={{
-        ...styles.main,
-        marginLeft: isMobile ? 0 : '220px',
-        padding: isMobile ? '70px 14px 90px' : '20px 30px',
-        flex: 1,
-      }}>
+      {/* Main Content */}
+      <div style={{ marginLeft: isMobile ? 0 : '240px', padding: isMobile ? '70px 14px 90px' : '28px 32px', flex: 1, position: 'relative', zIndex: 1 }}>
 
-        <div style={styles.topBar}>
-          <h2 style={{ ...styles.pageTitle, fontSize: isMobile ? '18px' : '22px' }}>
-            {activeTab === 'crypto' && '🪙 Crypto Market'}
-            {activeTab === 'stocks' && '📊 Stock Market'}
-            {activeTab === 'signals' && '🤖 AI Signals'}
-            {activeTab === 'portfolio' && '💼 My Portfolio'}
-            {activeTab === 'transactions' && '📜 History'}
-          </h2>
+        {/* Page Title */}
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+              {activeTab === 'crypto' && <><span style={{ color: '#00d4ff' }}>Crypto</span> Market</>}
+              {activeTab === 'stocks' && <><span style={{ color: '#00d4ff' }}>Stock</span> Market</>}
+              {activeTab === 'signals' && <><span style={{ color: '#00d4ff' }}>AI</span> Signals</>}
+              {activeTab === 'portfolio' && <>My <span style={{ color: '#00d4ff' }}>Portfolio</span></>}
+              {activeTab === 'transactions' && <>Transaction <span style={{ color: '#00d4ff' }}>History</span></>}
+            </h2>
+            <div style={{ color: '#555', fontSize: '12px', marginTop: '4px' }}>
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
+          </div>
         </div>
 
+        {/* Toast Message */}
         {message && (
-          <div style={messageType === 'success' ? styles.msgSuccess : styles.msgError}>{message}</div>
-        )}
-
-        {portfolio && (
-          <div style={{ ...styles.statsBar, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '10px' : '15px' }}>
-            <div style={styles.statItem}>
-              <span style={styles.statLabel}>💰 Balance</span>
-              <span style={styles.statVal}>₹{balance.toLocaleString('en-IN')}</span>
-            </div>
-            <div style={styles.statItem}>
-              <span style={styles.statLabel}>📈 Invested</span>
-              <span style={styles.statVal}>₹{totalInvested.toLocaleString('en-IN')}</span>
-            </div>
-            <div style={styles.statItem}>
-              <span style={styles.statLabel}>💼 Current Value</span>
-              <span style={styles.statVal}>₹{totalCurrentValue.toLocaleString('en-IN')}</span>
-            </div>
-            <div style={styles.statItem}>
-              <span style={styles.statLabel}>📊 Total P&L</span>
-              <span style={{ ...styles.statVal, color: totalPnL >= 0 ? '#00ff88' : '#ff4444' }}>
-                {totalPnL >= 0 ? '▲' : '▼'} ₹{Math.abs(totalPnL).toLocaleString('en-IN')}
-                <span style={{ fontSize: '12px', marginLeft: '4px' }}>({totalPnLPercent}%)</span>
-              </span>
-            </div>
+          <div style={{ background: messageType === 'success' ? 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,200,100,0.08))' : 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(200,0,0,0.08))', border: `1px solid ${messageType === 'success' ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, color: messageType === 'success' ? '#00ff88' : '#ff4444', padding: '12px 20px', borderRadius: '12px', marginBottom: '20px', fontWeight: '500', backdropFilter: 'blur(10px)' }}>
+            {message}
           </div>
         )}
 
-        {activeTab === 'crypto' && (
-          <div style={{ ...styles.grid, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: isMobile ? '10px' : '15px' }}>
-            {prices.map(coin => (
-              <div key={coin.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <img src={coin.image} alt={coin.name} style={isMobile ? styles.coinImgSm : styles.coinImg}
-                    onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
-                  <div>
-                    <div style={{ ...styles.coinName, fontSize: isMobile ? '12px' : '13px' }}>{coin.name}</div>
-                    <div style={styles.coinSymbol}>{coin.symbol}</div>
-                  </div>
-                </div>
-                <div style={{ ...styles.coinPrice, fontSize: isMobile ? '14px' : '17px' }}>₹{coin.price_inr.toLocaleString('en-IN')}</div>
-                <div style={coin.change_24h >= 0 ? styles.up : styles.down}>
-                  {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
-                </div>
-                <button style={styles.buyBtn} onClick={() => handleBuyCrypto(coin)}>🛒 Buy</button>
-              </div>
+        {/* Stats Bar */}
+        {portfolio && (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+            {[
+              { label: 'Balance', value: `₹${balance.toLocaleString('en-IN')}`, color: '#00d4ff', icon: '💰' },
+              { label: 'Invested', value: `₹${totalInvested.toLocaleString('en-IN')}`, color: '#fff', icon: '📈' },
+              { label: 'Current Value', value: `₹${totalCurrentValue.toLocaleString('en-IN')}`, color: '#fff', icon: '💼' },
+              { label: 'Total P&L', value: `${totalPnL >= 0 ? '▲' : '▼'} ₹${Math.abs(totalPnL).toLocaleString('en-IN')}`, sub: `${totalPnLPercent}%`, color: totalPnL >= 0 ? '#00ff88' : '#ff4444', icon: '📊' },
+            ].map((stat, i) => (
+              <GlassCard key={i} style={{ padding: '16px 18px' }}>
+                <div style={{ color: '#555', fontSize: '11px', marginBottom: '6px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{stat.icon} {stat.label}</div>
+                <div style={{ color: stat.color, fontWeight: '700', fontSize: isMobile ? '14px' : '16px', lineHeight: 1.2 }}>{stat.value}</div>
+                {stat.sub && <div style={{ color: stat.color, fontSize: '11px', opacity: 0.8, marginTop: '2px' }}>{stat.sub}</div>}
+              </GlassCard>
             ))}
           </div>
         )}
 
+        {/* Crypto Tab */}
+        {activeTab === 'crypto' && (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
+            {prices.map((coin, i) => (
+              <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
+                    onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }} />
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: isMobile ? '12px' : '13px', color: '#fff' }}>{coin.name}</div>
+                    <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase' }}>{coin.symbol}</div>
+                  </div>
+                </div>
+                <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
+                  ₹{coin.price_inr.toLocaleString('en-IN')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
+                    {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
+                  </span>
+                </div>
+                <button
+                  style={{ width: '100%', padding: '9px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '13px', letterSpacing: '0.3px' }}
+                  onClick={() => handleBuyCrypto(coin)}>
+                  Buy Now
+                </button>
+              </GlassCard>
+            ))}
+          </div>
+        )}
+
+        {/* Stocks Tab */}
         {activeTab === 'stocks' && (
           <div>
             {stocksLoading ? (
-              <div style={styles.loading}>📡 Stocks load ho rahe hain...</div>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px', fontSize: '16px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>
+                Loading stocks...
+              </div>
             ) : stocks.length === 0 ? (
-              <div style={{ textAlign: 'center', marginTop: '40px' }}>
-                <button style={{ ...styles.buyBtn, width: 'auto', padding: '12px 30px', fontSize: '16px' }} onClick={fetchStocks}>📡 Load Stocks</button>
+              <div style={{ textAlign: 'center', marginTop: '80px' }}>
+                <div style={{ fontSize: '50px', marginBottom: '16px' }}>📊</div>
+                <button style={{ padding: '14px 32px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '15px' }} onClick={fetchStocks}>Load Stock Prices</button>
               </div>
             ) : (
-              <div style={{ ...styles.grid, gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: isMobile ? '10px' : '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
                 {stocks.map(stock => (
-                  <div key={stock.symbol} style={styles.card}>
-                    <div style={styles.cardTop}>
-                      <span style={{ fontSize: isMobile ? '24px' : '32px' }}>{stock.flag}</span>
+                  <GlassCard key={stock.symbol} id={`stock-${stock.symbol}`} hover style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? '20px' : '24px' }}>{stock.flag}</div>
                       <div>
-                        <div style={{ ...styles.coinName, fontSize: isMobile ? '11px' : '13px' }}>{stock.name}</div>
-                        <div style={styles.coinSymbol}>{stock.symbol}</div>
+                        <div style={{ fontWeight: '700', fontSize: isMobile ? '11px' : '12px', color: '#fff' }}>{stock.name}</div>
+                        <div style={{ color: '#555', fontSize: '10px' }}>{stock.symbol}</div>
                       </div>
                     </div>
                     {stock.price ? (
                       <>
-                        <div style={{ ...styles.coinPrice, fontSize: isMobile ? '14px' : '17px' }}>₹{stock.price.toLocaleString('en-IN')}</div>
-                        <div style={parseFloat(stock.change) >= 0 ? styles.up : styles.down}>
-                          {parseFloat(stock.change) >= 0 ? '▲' : '▼'} ₹{Math.abs(stock.change).toFixed(2)}
+                        <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>₹{stock.price.toLocaleString('en-IN')}</div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ color: parseFloat(stock.change) >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: parseFloat(stock.change) >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
+                            {parseFloat(stock.change) >= 0 ? '▲' : '▼'} ₹{Math.abs(stock.change).toFixed(2)}
+                          </span>
                         </div>
                       </>
-                    ) : <div style={styles.coinSymbol}>Loading...</div>}
-                    <button style={styles.buyBtn} onClick={() => handleBuyStock(stock)}>🛒 Buy</button>
-                  </div>
+                    ) : <div style={{ color: '#555', fontSize: '12px', marginBottom: '12px' }}>Loading...</div>}
+                    <button style={{ width: '100%', padding: '9px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }} onClick={() => handleBuyStock(stock)}>Buy Now</button>
+                  </GlassCard>
                 ))}
               </div>
             )}
           </div>
         )}
 
+        {/* Signals Tab */}
         {activeTab === 'signals' && (
           <div>
             {signalsLoading ? (
-              <div style={styles.loading}>🤖 AI Signals generate ho rahe hain...</div>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>🤖</div>
+                AI analyzing markets...
+              </div>
             ) : signals.length === 0 ? (
-              <div style={{ textAlign: 'center', marginTop: '40px' }}>
-                <button style={{ ...styles.buyBtn, width: 'auto', padding: '12px 30px', fontSize: '16px' }} onClick={fetchSignals}>🤖 Generate Signals</button>
+              <div style={{ textAlign: 'center', marginTop: '80px' }}>
+                <div style={{ fontSize: '50px', marginBottom: '16px' }}>🤖</div>
+                <p style={{ color: '#555', marginBottom: '20px' }}>AI market analysis ready</p>
+                <button style={{ padding: '14px 32px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '15px' }} onClick={fetchSignals}>Generate AI Signals</button>
               </div>
             ) : (
-              <div style={styles.holdingsList}>
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
-                    <div style={{ color: '#00ff88', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'BUY').length}</div>
-                    <div style={{ color: '#aaa', fontSize: '12px' }}>🟢 BUY</div>
-                  </div>
-                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
-                    <div style={{ color: '#ffcc00', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'HOLD').length}</div>
-                    <div style={{ color: '#aaa', fontSize: '12px' }}>🟡 HOLD</div>
-                  </div>
-                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
-                    <div style={{ color: '#ff4444', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'SELL').length}</div>
-                    <div style={{ color: '#aaa', fontSize: '12px' }}>🔴 SELL</div>
-                  </div>
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                  {[
+                    { label: 'BUY', count: signals.filter(s => s.signal === 'BUY').length, color: '#00ff88', bg: 'rgba(0,255,136,0.08)', border: 'rgba(0,255,136,0.2)' },
+                    { label: 'HOLD', count: signals.filter(s => s.signal === 'HOLD').length, color: '#ffcc00', bg: 'rgba(255,204,0,0.08)', border: 'rgba(255,204,0,0.2)' },
+                    { label: 'SELL', count: signals.filter(s => s.signal === 'SELL').length, color: '#ff4444', bg: 'rgba(255,68,68,0.08)', border: 'rgba(255,68,68,0.2)' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '14px', padding: '16px', textAlign: 'center' }}>
+                      <div style={{ color: s.color, fontSize: '28px', fontWeight: '800' }}>{s.count}</div>
+                      <div style={{ color: s.color, fontSize: '12px', fontWeight: '600', marginTop: '4px' }}>{s.label}</div>
+                    </div>
+                  ))}
                 </div>
-                {signals.map(item => (
-                  <div key={item.id} style={{ ...styles.holdingCard, flexDirection: isMobile ? 'column' : 'row', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <img src={item.image} alt={item.name} style={styles.coinImg}
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
-                      <div>
-                        <div style={styles.holdingName}>{item.name}</div>
-                        <div style={styles.coinSymbol}>{item.symbol}</div>
-                        <div style={{ color: item.change >= 0 ? '#00ff88' : '#ff4444', fontSize: '13px', marginTop: '4px' }}>
-                          {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change).toFixed(2)}%
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                  {signals.map(item => (
+                    <GlassCard key={item.id} style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '50%' }}
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
+                          <div>
+                            <div style={{ fontWeight: '700', color: '#fff', fontSize: '15px' }}>{item.name}</div>
+                            <div style={{ color: '#555', fontSize: '11px' }}>{item.symbol}</div>
+                            <div style={{ color: item.change >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', marginTop: '2px', fontWeight: '600' }}>
+                              {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change).toFixed(2)}%
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-block', background: item.signal === 'BUY' ? 'rgba(0,255,136,0.12)' : item.signal === 'SELL' ? 'rgba(255,68,68,0.12)' : 'rgba(255,204,0,0.12)', color: item.color, border: `1px solid ${item.color}40`, borderRadius: '10px', padding: '6px 18px', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>
+                            {item.signal}
+                          </div>
+                          <div style={{ color: '#666', fontSize: '11px' }}>{item.reason}</div>
+                          <div style={{ color: '#00d4ff', fontWeight: '700', fontSize: '13px', marginTop: '2px' }}>₹{item.price.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
-                    </div>
-                    <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
-                      <div style={{
-                        display: 'inline-block',
-                        background: item.signal === 'BUY' ? '#00ff8820' : item.signal === 'SELL' ? '#ff444420' : '#ffcc0020',
-                        color: item.color,
-                        border: `1px solid ${item.color}`,
-                        borderRadius: '10px',
-                        padding: '6px 18px',
-                        fontWeight: 'bold',
-                        fontSize: '16px',
-                        marginBottom: '6px',
-                      }}>
-                        {item.signal === 'BUY' ? '🟢' : item.signal === 'SELL' ? '🔴' : '🟡'} {item.signal}
-                      </div>
-                      <div style={{ color: '#aaa', fontSize: '12px' }}>{item.reason}</div>
-                      <div style={{ color: '#00d4ff', fontWeight: 'bold', fontSize: '14px', marginTop: '4px' }}>
-                        ₹{item.price.toLocaleString('en-IN')}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <button style={{ ...styles.buyBtn, marginTop: '10px' }} onClick={fetchSignals}>🔄 Refresh Signals</button>
+                    </GlassCard>
+                  ))}
+                </div>
+                <button style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0,212,255,0.2)', background: 'rgba(0,212,255,0.06)', color: '#00d4ff', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }} onClick={fetchSignals}>🔄 Refresh Signals</button>
               </div>
             )}
           </div>
         )}
 
+        {/* Portfolio Tab */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
             {portfolio.holdings.length === 0 ? (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyIcon}>📭</div>
-                <p>Koi holding nahi — Crypto ya Stocks se kharido!</p>
+              <div style={{ textAlign: 'center', color: '#555', marginTop: '80px' }}>
+                <div style={{ fontSize: '60px', marginBottom: '16px' }}>📭</div>
+                <p>No holdings yet — buy Crypto or Stocks!</p>
               </div>
             ) : (
-              <div style={styles.holdingsList}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
                 {portfolio.holdings.map(holding => {
                   const pnl = parseFloat(holding.pnl || 0);
                   const pnlPercent = parseFloat(holding.pnl_percent || 0);
                   const currentValue = parseFloat(holding.current_value || 0);
                   const currentPrice = parseFloat(holding.current_price || holding.avg_buy_price);
+                  const isProfit = pnl >= 0;
                   return (
-                    <div key={holding.id} style={{ ...styles.holdingCard, flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <GlassCard key={holding.id} style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                         <div>
-                          <div style={styles.holdingName}>{holding.asset_name}</div>
-                          <span style={styles.badge}>{holding.asset_type}</span>
+                          <div style={{ fontWeight: '800', fontSize: '18px', color: '#fff', marginBottom: '4px' }}>{holding.asset_name}</div>
+                          <span style={{ background: holding.asset_type === 'crypto' ? 'rgba(0,212,255,0.12)' : 'rgba(255,204,0,0.12)', color: holding.asset_type === 'crypto' ? '#00d4ff' : '#ffcc00', padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase' }}>{holding.asset_type}</span>
                         </div>
-                        <div style={{
-                          background: pnl >= 0 ? '#00ff8815' : '#ff444415',
-                          border: `1px solid ${pnl >= 0 ? '#00ff88' : '#ff4444'}`,
-                          borderRadius: '10px',
-                          padding: '6px 14px',
-                          textAlign: 'right',
-                        }}>
-                          <div style={{ color: pnl >= 0 ? '#00ff88' : '#ff4444', fontWeight: 'bold', fontSize: '15px' }}>
-                            {pnl >= 0 ? '▲' : '▼'} ₹{Math.abs(pnl).toLocaleString('en-IN')}
+                        <div style={{ background: isProfit ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', border: `1px solid ${isProfit ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, borderRadius: '12px', padding: '8px 16px', textAlign: 'right' }}>
+                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontWeight: '800', fontSize: '16px' }}>
+                            {isProfit ? '+' : ''}₹{pnl.toLocaleString('en-IN')}
                           </div>
-                          <div style={{ color: pnl >= 0 ? '#00ff88' : '#ff4444', fontSize: '11px' }}>
-                            {pnl >= 0 ? '+' : ''}{pnlPercent}%
+                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontSize: '12px', opacity: 0.8 }}>
+                            {isProfit ? '+' : ''}{pnlPercent}%
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                        <div style={styles.miniStat}>
-                          <span style={styles.miniLabel}>Qty</span>
-                          <span style={styles.miniVal}>{holding.quantity}</span>
-                        </div>
-                        <div style={styles.miniStat}>
-                          <span style={styles.miniLabel}>Avg Buy</span>
-                          <span style={styles.miniVal}>₹{parseFloat(holding.avg_buy_price).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={styles.miniStat}>
-                          <span style={styles.miniLabel}>Current Price</span>
-                          <span style={styles.miniVal}>₹{currentPrice.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={styles.miniStat}>
-                          <span style={styles.miniLabel}>Current Value</span>
-                          <span style={{ ...styles.miniVal, color: '#00d4ff' }}>₹{currentValue.toLocaleString('en-IN')}</span>
-                        </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '14px' }}>
+                        {[
+                          { label: 'Quantity', value: holding.quantity },
+                          { label: 'Avg Buy Price', value: `₹${parseFloat(holding.avg_buy_price).toLocaleString('en-IN')}` },
+                          { label: 'Current Price', value: `₹${currentPrice.toLocaleString('en-IN')}`, highlight: true },
+                          { label: 'Current Value', value: `₹${currentValue.toLocaleString('en-IN')}`, highlight: true },
+                        ].map((item, i) => (
+                          <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>{item.label}</div>
+                            <div style={{ color: item.highlight ? '#00d4ff' : '#fff', fontWeight: '700', fontSize: '13px' }}>{item.value}</div>
+                          </div>
+                        ))}
                       </div>
-                      <button style={styles.sellBtn} onClick={() => handleSell(holding)}>🔴 Sell {holding.asset_name}</button>
-                    </div>
+                      <button style={{ width: '100%', padding: '11px', borderRadius: '11px', border: 'none', background: 'linear-gradient(135deg, #ff4444, #cc0000)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }} onClick={() => handleSell(holding)}>
+                        Sell {holding.asset_name}
+                      </button>
+                    </GlassCard>
                   );
                 })}
               </div>
@@ -404,40 +455,43 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
+        {/* Transactions Tab */}
         {activeTab === 'transactions' && (
-          <div style={styles.holdingsList}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '80px' }}>
             {transactions.length === 0 ? (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyIcon}>📭</div>
-                <p>Koi transaction nahi!</p>
+              <div style={{ textAlign: 'center', color: '#555', marginTop: '80px' }}>
+                <div style={{ fontSize: '60px', marginBottom: '16px' }}>📭</div>
+                <p>No transactions yet!</p>
               </div>
-            ) : (
-              transactions.map(tx => (
-                <div key={tx.id} style={{ ...styles.txCard, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center' }}>
-                  <div style={styles.txLeft}>
-                    <span style={tx.type === 'BUY' ? styles.txBuy : styles.txSell}>{tx.type}</span>
+            ) : transactions.map(tx => (
+              <GlassCard key={tx.id} style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ background: tx.type === 'BUY' ? 'rgba(0,255,136,0.12)' : 'rgba(255,68,68,0.12)', color: tx.type === 'BUY' ? '#00ff88' : '#ff4444', padding: '6px 12px', borderRadius: '8px', fontWeight: '800', fontSize: '12px', border: `1px solid ${tx.type === 'BUY' ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.2)'}` }}>{tx.type}</div>
                     <div>
-                      <div style={styles.txName}>{tx.asset_name} <span style={styles.txBadge}>{tx.asset_type}</span></div>
-                      <div style={styles.txDetail}>Qty: {tx.quantity} @ ₹{parseFloat(tx.price).toLocaleString('en-IN')}</div>
-                      <div style={styles.txDate}>{new Date(tx.created_at).toLocaleDateString('en-IN')}</div>
+                      <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{tx.asset_name} <span style={{ background: 'rgba(0,212,255,0.12)', color: '#00d4ff', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', marginLeft: '4px' }}>{tx.asset_type}</span></div>
+                      <div style={{ color: '#555', fontSize: '12px', marginTop: '2px' }}>Qty: {tx.quantity} @ ₹{parseFloat(tx.price).toLocaleString('en-IN')}</div>
+                      <div style={{ color: '#444', fontSize: '11px' }}>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                     </div>
                   </div>
-                  <div style={{ ...styles.txAmount, marginLeft: isMobile ? '0' : 'auto' }}>₹{parseFloat(tx.total).toLocaleString('en-IN')}</div>
+                  <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: '15px', whiteSpace: 'nowrap' }}>₹{parseFloat(tx.total).toLocaleString('en-IN')}</div>
                 </div>
-              ))
-            )}
+              </GlassCard>
+            ))}
           </div>
         )}
       </div>
 
+      {/* Mobile Bottom Nav */}
       {isMobile && (
-        <div style={styles.bottomNav}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 4px' }}>
           {navItems.map(item => (
             <button key={item.id}
-              style={activeTab === item.id ? { ...styles.bottomNavItem, ...styles.bottomNavActive } : styles.bottomNavItem}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'transparent', border: 'none', color: activeTab === item.id ? '#00d4ff' : '#444', cursor: 'pointer', padding: '4px 0' }}
               onClick={() => handleNav(item.id)}>
               <span style={{ fontSize: '20px' }}>{item.icon}</span>
-              <span style={{ fontSize: '9px', marginTop: '2px' }}>{item.label}</span>
+              <span style={{ fontSize: '9px', marginTop: '3px', fontWeight: activeTab === item.id ? '700' : '400' }}>{item.label}</span>
+              {activeTab === item.id && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#00d4ff', marginTop: '3px' }} />}
             </button>
           ))}
         </div>
@@ -446,74 +500,5 @@ function Dashboard({ user, onLogout }) {
     </div>
   );
 }
-
-const styles = {
-  mobileHeader: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: '#0d0d1f', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px', boxSizing: 'border-box' },
-  mobileLogo: { color: '#00d4ff', fontWeight: 'bold', fontSize: '17px' },
-  mobileRight: { display: 'flex', alignItems: 'center', gap: '10px' },
-  mobileBalance: { color: '#00ff88', fontWeight: 'bold', fontSize: '13px' },
-  hamburger: { background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '18px', cursor: 'pointer', borderRadius: '8px', padding: '4px 10px' },
-  mobileMenu: { position: 'fixed', top: '56px', left: 0, right: 0, zIndex: 999, background: '#0d0d1f', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '5px' },
-  mobileNavItem: { padding: '12px 15px', borderRadius: '10px', border: 'none', background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '16px', textAlign: 'left' },
-  mobileNavActive: { background: 'rgba(0,212,255,0.15)', color: '#00d4ff' },
-  mobileLogout: { padding: '12px 15px', borderRadius: '10px', border: 'none', background: '#ff444415', color: '#ff4444', cursor: 'pointer', fontSize: '16px', textAlign: 'left' },
-  bottomNav: { position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, background: '#0d0d1f', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-around', padding: '8px 0' },
-  bottomNavItem: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', padding: '4px 0' },
-  bottomNavActive: { color: '#00d4ff' },
-  sidebar: { width: '220px', background: 'rgba(255,255,255,0.03)', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', padding: '20px 0', position: 'fixed', height: '100vh' },
-  sidebarLogo: { color: '#00d4ff', fontSize: '22px', fontWeight: 'bold', textAlign: 'center', padding: '0 20px 15px' },
-  sidebarUser: { margin: '0 10px 20px', padding: '12px', background: 'rgba(0,212,255,0.05)', borderRadius: '10px', border: '1px solid rgba(0,212,255,0.1)' },
-  sidebarUserName: { color: '#fff', fontSize: '13px', marginBottom: '4px' },
-  sidebarBalance: { color: '#00ff88', fontWeight: 'bold', fontSize: '16px' },
-  nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: '5px', padding: '0 10px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 15px', borderRadius: '10px', border: 'none', background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '15px', textAlign: 'left' },
-  navItemActive: { background: 'linear-gradient(135deg, #00d4ff22, #0099cc22)', color: '#00d4ff', borderLeft: '3px solid #00d4ff' },
-  navIcon: { fontSize: '20px' },
-  logoutBtn: { margin: '10px', padding: '12px', borderRadius: '10px', border: 'none', background: '#ff444422', color: '#ff4444', cursor: 'pointer', fontSize: '14px' },
-  main: { flex: 1 },
-  topBar: { marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' },
-  pageTitle: { margin: 0, color: '#fff' },
-  msgSuccess: { background: '#00ff8820', border: '1px solid #00ff88', color: '#00ff88', padding: '10px 20px', borderRadius: '10px', marginBottom: '16px' },
-  msgError: { background: '#ff444420', border: '1px solid #ff4444', color: '#ff4444', padding: '10px 20px', borderRadius: '10px', marginBottom: '16px' },
-  statsBar: { display: 'grid', marginBottom: '20px' },
-  statItem: { background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '14px 18px', border: '1px solid rgba(255,255,255,0.08)' },
-  statLabel: { display: 'block', color: '#aaa', fontSize: '12px', marginBottom: '5px' },
-  statVal: { display: 'block', color: '#00d4ff', fontWeight: 'bold', fontSize: '18px' },
-  grid: { display: 'grid' },
-  card: { background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '14px', border: '1px solid rgba(255,255,255,0.08)' },
-  cardTop: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' },
-  coinImg: { width: '38px', height: '38px', borderRadius: '50%' },
-  coinImgSm: { width: '28px', height: '28px', borderRadius: '50%' },
-  coinName: { fontWeight: 'bold' },
-  coinSymbol: { color: '#aaa', fontSize: '11px' },
-  coinPrice: { color: '#00d4ff', fontWeight: 'bold', margin: '6px 0' },
-  up: { color: '#00ff88', fontSize: '12px', marginBottom: '8px' },
-  down: { color: '#ff4444', fontSize: '12px', marginBottom: '8px' },
-  buyBtn: { width: '100%', padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' },
-  loading: { textAlign: 'center', color: '#00d4ff', marginTop: '50px', fontSize: '18px' },
-  holdingsList: { display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' },
-  holdingCard: { background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '18px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex' },
-  holdingLeft: {},
-  holdingRight: {},
-  holdingName: { fontWeight: 'bold', fontSize: '16px', color: '#00d4ff', marginBottom: '4px' },
-  holdingDetail: { color: '#aaa', fontSize: '13px', margin: '2px 0' },
-  holdingValue: { color: '#00ff88', fontWeight: 'bold', fontSize: '16px', marginBottom: '10px' },
-  badge: { background: 'rgba(0,212,255,0.2)', color: '#00d4ff', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginBottom: '8px', display: 'inline-block' },
-  sellBtn: { width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #ff4444, #cc0000)', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' },
-  miniStat: { background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '8px 12px', border: '1px solid rgba(255,255,255,0.06)' },
-  miniLabel: { display: 'block', color: '#666', fontSize: '11px', marginBottom: '3px' },
-  miniVal: { display: 'block', color: '#fff', fontWeight: 'bold', fontSize: '13px' },
-  emptyState: { textAlign: 'center', color: '#aaa', marginTop: '80px' },
-  emptyIcon: { fontSize: '60px', marginBottom: '20px' },
-  txCard: { background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex' },
-  txLeft: { display: 'flex', alignItems: 'flex-start', gap: '12px' },
-  txBuy: { background: '#00ff8820', color: '#00ff88', padding: '4px 10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', whiteSpace: 'nowrap' },
-  txSell: { background: '#ff444420', color: '#ff4444', padding: '4px 10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', whiteSpace: 'nowrap' },
-  txName: { fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' },
-  txBadge: { background: 'rgba(0,212,255,0.2)', color: '#00d4ff', padding: '2px 6px', borderRadius: '6px', fontSize: '10px', marginLeft: '6px' },
-  txDetail: { color: '#aaa', fontSize: '12px', margin: '2px 0' },
-  txDate: { color: '#555', fontSize: '11px' },
-  txAmount: { color: '#00d4ff', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap' },
-};
 
 export default Dashboard;
