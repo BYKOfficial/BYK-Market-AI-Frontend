@@ -30,3 +30,6 @@ export const sellAsset = (data) => API.post('/trade/sell', data);
 // PORTFOLIO
 export const getPortfolio = () => API.get('/portfolio');
 export const getTransactions = () => API.get('/portfolio/transactions');
+
+// AI SIGNALS
+export const getSignals = () => API.get('/signals');

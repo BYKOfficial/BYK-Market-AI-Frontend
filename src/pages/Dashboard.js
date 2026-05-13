@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions } from '../services/api';
+import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals } from '../services/api';
 
 const STOCKS = [
   { symbol: 'RELIANCE.BO', name: 'Reliance Industries', flag: '🇮🇳' },
@@ -19,6 +19,8 @@ function Dashboard({ user, onLogout }) {
   const [stocks, setStocks] = useState([]);
   const [portfolio, setPortfolio] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [signals, setSignals] = useState([]);
+  const [signalsLoading, setSignalsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('crypto');
   const [stocksLoading, setStocksLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -67,6 +69,12 @@ function Dashboard({ user, onLogout }) {
     try { const res = await getTransactions(); setTransactions(res.data.data); } catch (err) {}
   };
 
+  const fetchSignals = async () => {
+    setSignalsLoading(true);
+    try { const res = await getSignals(); setSignals(res.data.data); } catch (err) {}
+    setSignalsLoading(false);
+  };
+
   const showMessage = (msg, type = 'success') => {
     setMessage(msg); setMessageType(type);
     setTimeout(() => setMessage(''), 3000);
@@ -110,6 +118,7 @@ function Dashboard({ user, onLogout }) {
   const navItems = [
     { id: 'crypto', icon: '🪙', label: 'Crypto' },
     { id: 'stocks', icon: '📊', label: 'Stocks' },
+    { id: 'signals', icon: '🤖', label: 'Signals' },
     { id: 'portfolio', icon: '💼', label: 'Portfolio' },
     { id: 'transactions', icon: '📜', label: 'History' },
   ];
@@ -120,6 +129,7 @@ function Dashboard({ user, onLogout }) {
     if (id === 'stocks' && stocks.length === 0) fetchStocks();
     if (id === 'transactions') fetchTransactions();
     if (id === 'portfolio') fetchPortfolio();
+    if (id === 'signals') fetchSignals();
   };
 
   return (
@@ -182,6 +192,7 @@ function Dashboard({ user, onLogout }) {
           <h2 style={{ ...styles.pageTitle, fontSize: isMobile ? '18px' : '22px' }}>
             {activeTab === 'crypto' && '🪙 Crypto Market'}
             {activeTab === 'stocks' && '📊 Stock Market'}
+            {activeTab === 'signals' && '🤖 AI Signals'}
             {activeTab === 'portfolio' && '💼 My Portfolio'}
             {activeTab === 'transactions' && '📜 History'}
           </h2>
@@ -265,6 +276,70 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
+        {activeTab === 'signals' && (
+          <div>
+            {signalsLoading ? (
+              <div style={styles.loading}>🤖 AI Signals generate ho rahe hain...</div>
+            ) : signals.length === 0 ? (
+              <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                <button style={{ ...styles.buyBtn, width: 'auto', padding: '12px 30px', fontSize: '16px' }} onClick={fetchSignals}>🤖 Generate Signals</button>
+              </div>
+            ) : (
+              <div style={styles.holdingsList}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
+                    <div style={{ color: '#00ff88', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'BUY').length}</div>
+                    <div style={{ color: '#aaa', fontSize: '12px' }}>🟢 BUY</div>
+                  </div>
+                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
+                    <div style={{ color: '#ffcc00', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'HOLD').length}</div>
+                    <div style={{ color: '#aaa', fontSize: '12px' }}>🟡 HOLD</div>
+                  </div>
+                  <div style={{ ...styles.statItem, flex: 1, textAlign: 'center' }}>
+                    <div style={{ color: '#ff4444', fontSize: '22px', fontWeight: 'bold' }}>{signals.filter(s => s.signal === 'SELL').length}</div>
+                    <div style={{ color: '#aaa', fontSize: '12px' }}>🔴 SELL</div>
+                  </div>
+                </div>
+                {signals.map(item => (
+                  <div key={item.id} style={{ ...styles.holdingCard, flexDirection: isMobile ? 'column' : 'row', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                      <img src={item.image} alt={item.name} style={styles.coinImg}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
+                      <div>
+                        <div style={styles.holdingName}>{item.name}</div>
+                        <div style={styles.coinSymbol}>{item.symbol}</div>
+                        <div style={{ color: item.change >= 0 ? '#00ff88' : '#ff4444', fontSize: '13px', marginTop: '4px' }}>
+                          {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change).toFixed(2)}%
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        background: item.signal === 'BUY' ? '#00ff8820' : item.signal === 'SELL' ? '#ff444420' : '#ffcc0020',
+                        color: item.color,
+                        border: `1px solid ${item.color}`,
+                        borderRadius: '10px',
+                        padding: '6px 18px',
+                        fontWeight: 'bold',
+                        fontSize: '16px',
+                        marginBottom: '6px',
+                      }}>
+                        {item.signal === 'BUY' ? '🟢' : item.signal === 'SELL' ? '🔴' : '🟡'} {item.signal}
+                      </div>
+                      <div style={{ color: '#aaa', fontSize: '12px' }}>{item.reason}</div>
+                      <div style={{ color: '#00d4ff', fontWeight: 'bold', fontSize: '14px', marginTop: '4px' }}>
+                        ₹{item.price.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button style={{ ...styles.buyBtn, marginTop: '10px' }} onClick={fetchSignals}>🔄 Refresh Signals</button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'portfolio' && portfolio && (
           <div>
             {portfolio.holdings.length === 0 ? (
@@ -325,8 +400,8 @@ function Dashboard({ user, onLogout }) {
             <button key={item.id}
               style={activeTab === item.id ? { ...styles.bottomNavItem, ...styles.bottomNavActive } : styles.bottomNavItem}
               onClick={() => handleNav(item.id)}>
-              <span style={{ fontSize: '22px' }}>{item.icon}</span>
-              <span style={{ fontSize: '10px', marginTop: '3px' }}>{item.label}</span>
+              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span style={{ fontSize: '9px', marginTop: '2px' }}>{item.label}</span>
             </button>
           ))}
         </div>
