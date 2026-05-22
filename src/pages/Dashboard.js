@@ -248,7 +248,6 @@ function Dashboard({ user, onLogout }) {
         </>
       )}
 
-      {/* Triggered Alert Popups */}
       {triggeredAlerts.map(alert => (
         <div key={alert.id} style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 9999, background: 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(255,150,0,0.1))', border: '1px solid rgba(255,204,0,0.4)', borderRadius: '14px', padding: '16px 20px', maxWidth: '320px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(255,204,0,0.2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -262,7 +261,6 @@ function Dashboard({ user, onLogout }) {
         </div>
       ))}
 
-      {/* Chart Modal */}
       {chartModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#0d0d1f', border: '1px solid rgba(0,212,255,0.2)', borderRadius: '24px', padding: '28px', width: '100%', maxWidth: '680px' }}>
@@ -276,7 +274,6 @@ function Dashboard({ user, onLogout }) {
               </div>
               <button onClick={() => setChartModal(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: '10px', padding: '8px 14px', fontSize: '16px' }}>✕</button>
             </div>
-
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               {[{ label: '1D', days: 1 }, { label: '7D', days: 7 }, { label: '30D', days: 30 }, { label: '90D', days: 90 }].map(opt => (
                 <button key={opt.days} onClick={() => changeChartDays(opt.days)}
@@ -285,47 +282,33 @@ function Dashboard({ user, onLogout }) {
                 </button>
               ))}
             </div>
-
             <div style={{ height: '260px', width: '100%' }}>
               {chartLoading ? (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00d4ff', fontSize: '14px' }}>
-                  📡 Loading chart data...
-                </div>
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00d4ff', fontSize: '14px' }}>📡 Loading chart data...</div>
               ) : chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="time" tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false}
-                      interval={Math.floor(chartData.length / 6)} />
-                    <YAxis tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false}
-                      tickFormatter={(v) => `₹${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`}
-                      domain={['auto', 'auto']} width={60} />
+                    <XAxis dataKey="time" tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.floor(chartData.length / 6)} />
+                    <YAxis tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`} domain={['auto', 'auto']} width={60} />
                     <Tooltip content={<CustomTooltip />} />
                     <Line type="monotone" dataKey="price" stroke="#00d4ff" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: '#00d4ff' }} />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
-                  Chart data unavailable
-                </div>
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Chart data unavailable</div>
               )}
             </div>
-
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
-                onClick={() => { setChartModal(null); handleBuyCrypto(chartModal); }}>
-                Buy {chartModal.name}
-              </button>
+                onClick={() => { setChartModal(null); handleBuyCrypto(chartModal); }}>Buy {chartModal.name}</button>
               <button style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '18px' }}
-                onClick={() => { setChartModal(null); openAlertModal(chartModal); }}>
-                🔔
-              </button>
+                onClick={() => { setChartModal(null); openAlertModal(chartModal); }}>🔔</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Alert Modal */}
       {showAlertModal && alertCoin && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9997, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#0d0d1f', border: '1px solid rgba(255,204,0,0.2)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '380px' }}>
@@ -354,7 +337,6 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Mobile Header */}
       {isMobile && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -370,7 +352,6 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Mobile Menu */}
       {isMobile && menuOpen && (
         <div style={{ position: 'fixed', top: '56px', left: 0, right: 0, zIndex: 999, background: 'rgba(5,5,16,0.98)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map(item => (
@@ -385,7 +366,6 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Desktop Sidebar */}
       {!isMobile && (
         <div style={{ width: '240px', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', padding: '24px 0', position: 'fixed', height: '100vh', zIndex: 10 }}>
           <div style={{ padding: '0 20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '16px' }}>
@@ -418,7 +398,6 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Main Content */}
       <div style={{ marginLeft: isMobile ? 0 : '240px', padding: isMobile ? '70px 14px 90px' : '28px 32px', flex: 1, position: 'relative', zIndex: 1 }}>
         <div style={{ marginBottom: '24px' }}>
           <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
@@ -459,51 +438,43 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Crypto Tab */}
         {activeTab === 'crypto' && (
-          <div>
-            <div style={{ color: '#555', fontSize: '12px', marginBottom: '12px' }}>📊 Coin pe click karo — price chart dekhne ke liye</div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
-              {prices.map((coin) => (
-                <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px', cursor: 'pointer' }}>
-                  <div onClick={() => openChart(coin)} style={{ marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                      <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }} />
-                      <div>
-                        <div style={{ fontWeight: '700', fontSize: isMobile ? '12px' : '13px', color: '#fff' }}>{coin.name}</div>
-                        <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase' }}>{coin.symbol}</div>
-                      </div>
-                    </div>
-                    <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
-                      ₹{coin.price_inr.toLocaleString('en-IN')}
-                    </div>
-                    <div style={{ marginBottom: '4px' }}>
-                      <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
-                        {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
-                      </span>
-                    </div>
-                    <div style={{ color: '#333', fontSize: '10px', marginBottom: '8px' }}>📈 Tap for chart</div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+            {prices.map((coin) => (
+              <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
+                    onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }} />
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: isMobile ? '12px' : '13px', color: '#fff' }}>{coin.name}</div>
+                    <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase' }}>{coin.symbol}</div>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
-                      onClick={(e) => { e.stopPropagation(); handleBuyCrypto(coin); }}>Buy</button>
-                    <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '14px' }}
-                      onClick={(e) => { e.stopPropagation(); openAlertModal(coin); }} title="Set Alert">🔔</button>
-                  </div>
-                </GlassCard>
-              ))}
-            </div>
+                </div>
+                <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
+                  ₹{coin.price_inr.toLocaleString('en-IN')}
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
+                    {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+                    onClick={() => handleBuyCrypto(coin)}>Buy</button>
+                  <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.08)', color: '#00ff88', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}
+                    onClick={() => openChart(coin)}>📊</button>
+                  <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '14px' }}
+                    onClick={() => openAlertModal(coin)}>🔔</button>
+                </div>
+              </GlassCard>
+            ))}
           </div>
         )}
 
-        {/* Stocks Tab */}
         {activeTab === 'stocks' && (
           <div>
             {stocksLoading ? (
-              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>Loading stocks...
-              </div>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}><div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>Loading stocks...</div>
             ) : stocks.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '80px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '16px' }}>📊</div>
@@ -538,7 +509,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Signals Tab */}
         {activeTab === 'signals' && (
           <div>
             {signalsLoading ? (
@@ -590,7 +560,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* News Tab */}
         {activeTab === 'news' && (
           <div>
             {newsLoading ? (
@@ -628,7 +597,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Alerts Tab */}
         {activeTab === 'alerts' && (
           <div style={{ paddingBottom: '80px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -666,7 +634,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Portfolio Tab */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
             {portfolio.holdings.length === 0 ? (
@@ -718,7 +685,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Transactions Tab */}
         {activeTab === 'transactions' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '80px' }}>
             {transactions.length === 0 ? (
@@ -745,7 +711,6 @@ function Dashboard({ user, onLogout }) {
         )}
       </div>
 
-      {/* Mobile Bottom Nav */}
       {isMobile && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 4px' }}>
           {navItems.map(item => (
