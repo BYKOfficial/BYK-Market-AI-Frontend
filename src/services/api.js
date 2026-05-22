@@ -18,6 +18,7 @@ export const registerUser = (data) => API.post('/auth/register', data);
 
 // CRYPTO
 export const getCryptoPrices = () => API.get('/crypto/prices');
+export const getCryptoChart = (geckoId, days = 7) => API.get(`/crypto/chart/${geckoId}?days=${days}`);
 
 // STOCK
 export const getStockPrice = (symbol) => API.get(`/stock/price/${symbol}`);

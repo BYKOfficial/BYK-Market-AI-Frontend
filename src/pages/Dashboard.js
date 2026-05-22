@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals, getNews } from '../services/api';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals, getNews, getCryptoChart } from '../services/api';
 
 const STOCKS = [
   { symbol: 'RELIANCE.BO', name: 'Reliance Industries', flag: '🇮🇳' },
@@ -39,6 +40,10 @@ function Dashboard({ user, onLogout }) {
   const [alertCoin, setAlertCoin] = useState(null);
   const [alertPrice, setAlertPrice] = useState('');
   const [alertType, setAlertType] = useState('above');
+  const [chartModal, setChartModal] = useState(null);
+  const [chartData, setChartData] = useState([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartDays, setChartDays] = useState(7);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -61,9 +66,8 @@ function Dashboard({ user, onLogout }) {
     const remainingAlerts = alerts.filter(alert => {
       const coin = prices.find(p => p.id === alert.coinId);
       if (!coin) return true;
-      const currentPrice = coin.price_inr;
-      const hit = alert.type === 'above' ? currentPrice >= alert.targetPrice : currentPrice <= alert.targetPrice;
-      if (hit) { newTriggered.push({ ...alert, currentPrice, coinName: coin.name }); return false; }
+      const hit = alert.type === 'above' ? coin.price_inr >= alert.targetPrice : coin.price_inr <= alert.targetPrice;
+      if (hit) { newTriggered.push({ ...alert, currentPrice: coin.price_inr, coinName: coin.name }); return false; }
       return true;
     });
     if (newTriggered.length > 0) {
@@ -80,6 +84,30 @@ function Dashboard({ user, onLogout }) {
       setLastUpdated(new Date().toLocaleTimeString('en-IN'));
     } catch (err) {}
   };
+
+  const openChart = async (coin, days = 7) => {
+    setChartModal(coin);
+    setChartDays(days);
+    setChartLoading(true);
+    setChartData([]);
+    try {
+      const res = await getCryptoChart(coin.geckoId, days);
+      setChartData(res.data.data);
+    } catch (err) {}
+    setChartLoading(false);
+  };
+
+  const changeChartDays = async (days) => {
+    setChartDays(days);
+    setChartLoading(true);
+    setChartData([]);
+    try {
+      const res = await getCryptoChart(chartModal.geckoId, days);
+      setChartData(res.data.data);
+    } catch (err) {}
+    setChartLoading(false);
+  };
+
   const fetchStocks = async () => {
     setStocksLoading(true);
     try {
@@ -139,7 +167,6 @@ function Dashboard({ user, onLogout }) {
       showMessage(`✅ ${holding.asset_name} becha gaya!`); fetchPortfolio();
     } catch (err) { showMessage(err.response?.data?.message || 'Sell failed!', 'error'); }
   };
-
   const openAlertModal = (coin) => { setAlertCoin(coin); setAlertPrice(''); setAlertType('above'); setShowAlertModal(true); };
   const saveAlert = () => {
     if (!alertPrice || isNaN(alertPrice)) return;
@@ -189,18 +216,27 @@ function Dashboard({ user, onLogout }) {
       onMouseLeave={() => hover && setHoveredCard(null)}
       style={{
         background: hoveredCard === id ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '16px',
+        backdropFilter: 'blur(20px)', borderRadius: '16px',
         border: hoveredCard === id ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
         transition: 'all 0.2s ease',
         transform: hoveredCard === id ? 'translateY(-2px)' : 'translateY(0)',
         boxShadow: hoveredCard === id ? '0 8px 32px rgba(0,212,255,0.1)' : '0 2px 8px rgba(0,0,0,0.2)',
         ...style,
       }}
-    >
-      {children}
-    </div>
+    >{children}</div>
   );
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ background: 'rgba(10,10,30,0.95)', border: '1px solid rgba(0,212,255,0.3)', borderRadius: '10px', padding: '10px 14px' }}>
+          <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>{label}</div>
+          <div style={{ color: '#00d4ff', fontWeight: '700', fontSize: '14px' }}>₹{payload[0].value.toLocaleString('en-IN')}</div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(135deg, #050510 0%, #0a0a1a 50%, #050510 100%)', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -226,9 +262,72 @@ function Dashboard({ user, onLogout }) {
         </div>
       ))}
 
+      {/* Chart Modal */}
+      {chartModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#0d0d1f', border: '1px solid rgba(0,212,255,0.2)', borderRadius: '24px', padding: '28px', width: '100%', maxWidth: '680px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src={chartModal.image} alt={chartModal.name} style={{ width: '40px', height: '40px', borderRadius: '50%' }} onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
+                <div>
+                  <div style={{ fontWeight: '800', fontSize: '18px' }}>{chartModal.name}</div>
+                  <div style={{ color: '#00d4ff', fontSize: '14px', fontWeight: '700' }}>₹{chartModal.price_inr.toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+              <button onClick={() => setChartModal(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: '10px', padding: '8px 14px', fontSize: '16px' }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              {[{ label: '1D', days: 1 }, { label: '7D', days: 7 }, { label: '30D', days: 30 }, { label: '90D', days: 90 }].map(opt => (
+                <button key={opt.days} onClick={() => changeChartDays(opt.days)}
+                  style={{ padding: '6px 16px', borderRadius: '8px', border: `1px solid ${chartDays === opt.days ? 'rgba(0,212,255,0.5)' : 'rgba(255,255,255,0.1)'}`, background: chartDays === opt.days ? 'rgba(0,212,255,0.15)' : 'transparent', color: chartDays === opt.days ? '#00d4ff' : '#666', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ height: '260px', width: '100%' }}>
+              {chartLoading ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00d4ff', fontSize: '14px' }}>
+                  📡 Loading chart data...
+                </div>
+              ) : chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="time" tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false}
+                      interval={Math.floor(chartData.length / 6)} />
+                    <YAxis tick={{ fill: '#444', fontSize: 11 }} tickLine={false} axisLine={false}
+                      tickFormatter={(v) => `₹${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`}
+                      domain={['auto', 'auto']} width={60} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line type="monotone" dataKey="price" stroke="#00d4ff" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: '#00d4ff' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
+                  Chart data unavailable
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
+                onClick={() => { setChartModal(null); handleBuyCrypto(chartModal); }}>
+                Buy {chartModal.name}
+              </button>
+              <button style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '18px' }}
+                onClick={() => { setChartModal(null); openAlertModal(chartModal); }}>
+                🔔
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Alert Modal */}
       {showAlertModal && alertCoin && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9997, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#0d0d1f', border: '1px solid rgba(255,204,0,0.2)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '380px' }}>
             <div style={{ fontWeight: '800', fontSize: '18px', marginBottom: '6px' }}>🔔 Set Price Alert</div>
             <div style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>{alertCoin.name} — Current: ₹{alertCoin.price_inr.toLocaleString('en-IN')}</div>
@@ -237,20 +336,15 @@ function Dashboard({ user, onLogout }) {
               <div style={{ display: 'flex', gap: '10px' }}>
                 {['above', 'below'].map(t => (
                   <button key={t} onClick={() => setAlertType(t)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: `1px solid ${alertType === t ? 'rgba(255,204,0,0.4)' : 'rgba(255,255,255,0.08)'}`, background: alertType === t ? 'rgba(255,204,0,0.1)' : 'transparent', color: alertType === t ? '#ffcc00' : '#666', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
-                    {t === 'above' ? '▲ Price Goes Above' : '▼ Price Goes Below'}
+                    {t === 'above' ? '▲ Above' : '▼ Below'}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ marginBottom: '20px' }}>
               <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase' }}>Target Price (₹)</div>
-              <input
-                type="number"
-                value={alertPrice}
-                onChange={e => setAlertPrice(e.target.value)}
-                placeholder="Enter target price..."
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
-              />
+              <input type="number" value={alertPrice} onChange={e => setAlertPrice(e.target.value)} placeholder="Enter target price..."
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setShowAlertModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#666', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
@@ -326,22 +420,19 @@ function Dashboard({ user, onLogout }) {
 
       {/* Main Content */}
       <div style={{ marginLeft: isMobile ? 0 : '240px', padding: isMobile ? '70px 14px 90px' : '28px 32px', flex: 1, position: 'relative', zIndex: 1 }}>
-
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
-              {activeTab === 'crypto' && <><span style={{ color: '#00d4ff' }}>Crypto</span> Market</>}
-              {activeTab === 'stocks' && <><span style={{ color: '#00d4ff' }}>Stock</span> Market</>}
-              {activeTab === 'signals' && <><span style={{ color: '#00d4ff' }}>AI</span> Signals</>}
-              {activeTab === 'news' && <><span style={{ color: '#00d4ff' }}>Live</span> News</>}
-              {activeTab === 'alerts' && <><span style={{ color: '#ffcc00' }}>Price</span> Alerts</>}
-              {activeTab === 'portfolio' && <>My <span style={{ color: '#00d4ff' }}>Portfolio</span></>}
-              {activeTab === 'transactions' && <>Transaction <span style={{ color: '#00d4ff' }}>History</span></>}
-            </h2>
-            <div style={{ color: '#555', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              {activeTab === 'crypto' && lastUpdated && <span style={{ color: '#00ff88', fontSize: '11px' }}>🟢 Updated {lastUpdated}</span>}
-            </div>
+        <div style={{ marginBottom: '24px' }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+            {activeTab === 'crypto' && <><span style={{ color: '#00d4ff' }}>Crypto</span> Market</>}
+            {activeTab === 'stocks' && <><span style={{ color: '#00d4ff' }}>Stock</span> Market</>}
+            {activeTab === 'signals' && <><span style={{ color: '#00d4ff' }}>AI</span> Signals</>}
+            {activeTab === 'news' && <><span style={{ color: '#00d4ff' }}>Live</span> News</>}
+            {activeTab === 'alerts' && <><span style={{ color: '#ffcc00' }}>Price</span> Alerts</>}
+            {activeTab === 'portfolio' && <>My <span style={{ color: '#00d4ff' }}>Portfolio</span></>}
+            {activeTab === 'transactions' && <>Transaction <span style={{ color: '#00d4ff' }}>History</span></>}
+          </h2>
+          <div style={{ color: '#555', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {activeTab === 'crypto' && lastUpdated && <span style={{ color: '#00ff88', fontSize: '11px' }}>🟢 Updated {lastUpdated}</span>}
           </div>
         </div>
 
@@ -351,7 +442,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Stats Bar */}
         {portfolio && (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
             {[
@@ -371,31 +461,39 @@ function Dashboard({ user, onLogout }) {
 
         {/* Crypto Tab */}
         {activeTab === 'crypto' && (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
-            {prices.map((coin) => (
-              <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
-                    onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }} />
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: isMobile ? '12px' : '13px', color: '#fff' }}>{coin.name}</div>
-                    <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase' }}>{coin.symbol}</div>
+          <div>
+            <div style={{ color: '#555', fontSize: '12px', marginBottom: '12px' }}>📊 Coin pe click karo — price chart dekhne ke liye</div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
+              {prices.map((coin) => (
+                <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px', cursor: 'pointer' }}>
+                  <div onClick={() => openChart(coin)} style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }} />
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: isMobile ? '12px' : '13px', color: '#fff' }}>{coin.name}</div>
+                        <div style={{ color: '#555', fontSize: '10px', textTransform: 'uppercase' }}>{coin.symbol}</div>
+                      </div>
+                    </div>
+                    <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
+                      ₹{coin.price_inr.toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
+                        {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
+                      </span>
+                    </div>
+                    <div style={{ color: '#333', fontSize: '10px', marginBottom: '8px' }}>📈 Tap for chart</div>
                   </div>
-                </div>
-                <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
-                  ₹{coin.price_inr.toLocaleString('en-IN')}
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                  <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
-                    {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }} onClick={() => handleBuyCrypto(coin)}>Buy</button>
-                  <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '14px' }} onClick={() => openAlertModal(coin)} title="Set Alert">🔔</button>
-                </div>
-              </GlassCard>
-            ))}
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+                      onClick={(e) => { e.stopPropagation(); handleBuyCrypto(coin); }}>Buy</button>
+                    <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '14px' }}
+                      onClick={(e) => { e.stopPropagation(); openAlertModal(coin); }} title="Set Alert">🔔</button>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
           </div>
         )}
 
@@ -404,8 +502,7 @@ function Dashboard({ user, onLogout }) {
           <div>
             {stocksLoading ? (
               <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>
-                Loading stocks...
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>Loading stocks...
               </div>
             ) : stocks.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '80px' }}>
@@ -445,10 +542,7 @@ function Dashboard({ user, onLogout }) {
         {activeTab === 'signals' && (
           <div>
             {signalsLoading ? (
-              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '16px' }}>🤖</div>
-                AI analyzing markets...
-              </div>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}><div style={{ fontSize: '40px', marginBottom: '16px' }}>🤖</div>AI analyzing markets...</div>
             ) : signals.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '80px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '16px' }}>🤖</div>
@@ -474,20 +568,15 @@ function Dashboard({ user, onLogout }) {
                     <GlassCard key={item.id} style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '50%' }}
-                            onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
+                          <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '50%' }} onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }} />
                           <div>
                             <div style={{ fontWeight: '700', color: '#fff', fontSize: '15px' }}>{item.name}</div>
                             <div style={{ color: '#555', fontSize: '11px' }}>{item.symbol}</div>
-                            <div style={{ color: item.change >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', marginTop: '2px', fontWeight: '600' }}>
-                              {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change).toFixed(2)}%
-                            </div>
+                            <div style={{ color: item.change >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', marginTop: '2px', fontWeight: '600' }}>{item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change).toFixed(2)}%</div>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-block', background: item.signal === 'BUY' ? 'rgba(0,255,136,0.12)' : item.signal === 'SELL' ? 'rgba(255,68,68,0.12)' : 'rgba(255,204,0,0.12)', color: item.color, border: `1px solid ${item.color}40`, borderRadius: '10px', padding: '6px 18px', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>
-                            {item.signal}
-                          </div>
+                          <div style={{ display: 'inline-block', background: item.signal === 'BUY' ? 'rgba(0,255,136,0.12)' : item.signal === 'SELL' ? 'rgba(255,68,68,0.12)' : 'rgba(255,204,0,0.12)', color: item.color, border: `1px solid ${item.color}40`, borderRadius: '10px', padding: '6px 18px', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>{item.signal}</div>
                           <div style={{ color: '#666', fontSize: '11px' }}>{item.reason}</div>
                           <div style={{ color: '#00d4ff', fontWeight: '700', fontSize: '13px', marginTop: '2px' }}>₹{item.price.toLocaleString('en-IN')}</div>
                         </div>
@@ -505,10 +594,7 @@ function Dashboard({ user, onLogout }) {
         {activeTab === 'news' && (
           <div>
             {newsLoading ? (
-              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📰</div>
-                Loading latest news...
-              </div>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}><div style={{ fontSize: '40px', marginBottom: '16px' }}>📰</div>Loading latest news...</div>
             ) : news.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '80px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '16px' }}>📰</div>
@@ -549,9 +635,7 @@ function Dashboard({ user, onLogout }) {
               <span style={{ color: '#555', fontSize: '13px' }}>{alerts.length} active alert{alerts.length !== 1 ? 's' : ''}</span>
               {prices.length > 0 && (
                 <button style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
-                  onClick={() => { const coin = prices[0]; openAlertModal(coin); }}>
-                  + New Alert
-                </button>
+                  onClick={() => openAlertModal(prices[0])}>+ New Alert</button>
               )}
             </div>
             {alerts.length === 0 ? (
@@ -564,18 +648,13 @@ function Dashboard({ user, onLogout }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {alerts.map(alert => {
                   const coin = prices.find(p => p.id === alert.coinId);
-                  const currentPrice = coin ? coin.price_inr : null;
                   return (
                     <GlassCard key={alert.id} style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontWeight: '700', fontSize: '15px', color: '#fff', marginBottom: '4px' }}>{alert.coinName}</div>
-                          <div style={{ color: '#ffcc00', fontSize: '13px', marginBottom: '4px' }}>
-                            {alert.type === 'above' ? '▲ Above' : '▼ Below'} ₹{alert.targetPrice.toLocaleString('en-IN')}
-                          </div>
-                          {currentPrice && (
-                            <div style={{ color: '#555', fontSize: '11px' }}>Current: ₹{currentPrice.toLocaleString('en-IN')}</div>
-                          )}
+                          <div style={{ color: '#ffcc00', fontSize: '13px', marginBottom: '4px' }}>{alert.type === 'above' ? '▲ Above' : '▼ Below'} ₹{alert.targetPrice.toLocaleString('en-IN')}</div>
+                          {coin && <div style={{ color: '#555', fontSize: '11px' }}>Current: ₹{coin.price_inr.toLocaleString('en-IN')}</div>}
                         </div>
                         <button onClick={() => removeAlert(alert.id)} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', color: '#ff4444', cursor: 'pointer', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '600' }}>Remove</button>
                       </div>
@@ -681,7 +760,6 @@ function Dashboard({ user, onLogout }) {
           ))}
         </div>
       )}
-
     </div>
   );
 }
