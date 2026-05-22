@@ -4,7 +4,6 @@ const API = axios.create({
   baseURL: 'https://byk-market-ai.onrender.com/api'
 });
 
-// Token automatically add karo har request mein
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -33,3 +32,6 @@ export const getTransactions = () => API.get('/portfolio/transactions');
 
 // AI SIGNALS
 export const getSignals = () => API.get('/signals');
+
+// NEWS
+export const getNews = () => API.get('/news');

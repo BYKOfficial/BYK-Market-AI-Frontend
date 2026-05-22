@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals } from '../services/api';
+import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals, getNews } from '../services/api';
 
 const STOCKS = [
   { symbol: 'RELIANCE.BO', name: 'Reliance Industries', flag: '🇮🇳' },
@@ -20,6 +20,8 @@ function Dashboard({ user, onLogout }) {
   const [portfolio, setPortfolio] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [signals, setSignals] = useState([]);
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('crypto');
   const [stocksLoading, setStocksLoading] = useState(false);
@@ -28,6 +30,7 @@ function Dashboard({ user, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -35,11 +38,24 @@ function Dashboard({ user, onLogout }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => { fetchPrices(); fetchPortfolio(); }, []);
+  useEffect(() => {
+    fetchPrices();
+    fetchPortfolio();
+    // Auto-refresh crypto every 15 seconds
+    const interval = setInterval(() => {
+      fetchPrices();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
 
   const fetchPrices = async () => {
-    try { const res = await getCryptoPrices(); setPrices(res.data.data); } catch (err) {}
+    try {
+      const res = await getCryptoPrices();
+      setPrices(res.data.data);
+      setLastUpdated(new Date().toLocaleTimeString('en-IN'));
+    } catch (err) {}
   };
   const fetchStocks = async () => {
     setStocksLoading(true);
@@ -64,6 +80,11 @@ function Dashboard({ user, onLogout }) {
     setSignalsLoading(true);
     try { const res = await getSignals(); setSignals(res.data.data); } catch (err) {}
     setSignalsLoading(false);
+  };
+  const fetchNews = async () => {
+    setNewsLoading(true);
+    try { const res = await getNews(); setNews(res.data.data); } catch (err) {}
+    setNewsLoading(false);
   };
   const showMessage = (msg, type = 'success') => {
     setMessage(msg); setMessageType(type);
@@ -106,6 +127,7 @@ function Dashboard({ user, onLogout }) {
     { id: 'crypto', icon: '🪙', label: 'Crypto' },
     { id: 'stocks', icon: '📊', label: 'Stocks' },
     { id: 'signals', icon: '🤖', label: 'Signals' },
+    { id: 'news', icon: '📰', label: 'News' },
     { id: 'portfolio', icon: '💼', label: 'Portfolio' },
     { id: 'transactions', icon: '📜', label: 'History' },
   ];
@@ -117,6 +139,7 @@ function Dashboard({ user, onLogout }) {
     if (id === 'transactions') fetchTransactions();
     if (id === 'portfolio') fetchPortfolio();
     if (id === 'signals') fetchSignals();
+    if (id === 'news') fetchNews();
   };
 
   const GlassCard = ({ children, style = {}, hover = false, id }) => (
@@ -124,19 +147,13 @@ function Dashboard({ user, onLogout }) {
       onMouseEnter={() => hover && setHoveredCard(id)}
       onMouseLeave={() => hover && setHoveredCard(null)}
       style={{
-        background: hoveredCard === id
-          ? 'rgba(255,255,255,0.08)'
-          : 'rgba(255,255,255,0.04)',
+        background: hoveredCard === id ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
         backdropFilter: 'blur(20px)',
         borderRadius: '16px',
-        border: hoveredCard === id
-          ? '1px solid rgba(0,212,255,0.3)'
-          : '1px solid rgba(255,255,255,0.08)',
+        border: hoveredCard === id ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
         transition: 'all 0.2s ease',
         transform: hoveredCard === id ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: hoveredCard === id
-          ? '0 8px 32px rgba(0,212,255,0.1)'
-          : '0 2px 8px rgba(0,0,0,0.2)',
+        boxShadow: hoveredCard === id ? '0 8px 32px rgba(0,212,255,0.1)' : '0 2px 8px rgba(0,0,0,0.2)',
         ...style,
       }}
     >
@@ -147,7 +164,6 @@ function Dashboard({ user, onLogout }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(135deg, #050510 0%, #0a0a1a 50%, #050510 100%)', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
 
-      {/* Ambient background blobs */}
       {!isMobile && (
         <>
           <div style={{ position: 'fixed', top: '10%', left: '15%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
@@ -188,7 +204,6 @@ function Dashboard({ user, onLogout }) {
       {/* Desktop Sidebar */}
       {!isMobile && (
         <div style={{ width: '240px', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', padding: '24px 0', position: 'fixed', height: '100vh', zIndex: 10 }}>
-          {/* Logo */}
           <div style={{ padding: '0 20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📈</div>
@@ -197,15 +212,12 @@ function Dashboard({ user, onLogout }) {
                 <div style={{ color: '#555', fontSize: '10px', letterSpacing: '1px' }}>AI TRADING</div>
               </div>
             </div>
-            {/* User Card */}
             <div style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(0,102,255,0.05))', borderRadius: '12px', padding: '12px', border: '1px solid rgba(0,212,255,0.12)' }}>
               <div style={{ color: '#888', fontSize: '11px', marginBottom: '2px' }}>👤 {user.name}</div>
               <div style={{ color: '#00ff88', fontWeight: '700', fontSize: '18px' }}>₹{balance.toLocaleString('en-IN')}</div>
               <div style={{ color: '#555', fontSize: '10px', marginTop: '2px' }}>Virtual Balance</div>
             </div>
           </div>
-
-          {/* Nav */}
           <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px' }}>
             {navItems.map(item => (
               <button key={item.id}
@@ -217,7 +229,6 @@ function Dashboard({ user, onLogout }) {
               </button>
             ))}
           </nav>
-
           <button style={{ margin: '12px', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,68,68,0.2)', background: 'rgba(255,68,68,0.06)', color: '#ff4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }} onClick={onLogout}>🚪 Logout</button>
         </div>
       )}
@@ -225,25 +236,27 @@ function Dashboard({ user, onLogout }) {
       {/* Main Content */}
       <div style={{ marginLeft: isMobile ? 0 : '240px', padding: isMobile ? '70px 14px 90px' : '28px 32px', flex: 1, position: 'relative', zIndex: 1 }}>
 
-        {/* Page Title */}
         <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
               {activeTab === 'crypto' && <><span style={{ color: '#00d4ff' }}>Crypto</span> Market</>}
               {activeTab === 'stocks' && <><span style={{ color: '#00d4ff' }}>Stock</span> Market</>}
               {activeTab === 'signals' && <><span style={{ color: '#00d4ff' }}>AI</span> Signals</>}
+              {activeTab === 'news' && <><span style={{ color: '#00d4ff' }}>Live</span> News</>}
               {activeTab === 'portfolio' && <>My <span style={{ color: '#00d4ff' }}>Portfolio</span></>}
               {activeTab === 'transactions' && <>Transaction <span style={{ color: '#00d4ff' }}>History</span></>}
             </h2>
-            <div style={{ color: '#555', fontSize: '12px', marginTop: '4px' }}>
+            <div style={{ color: '#555', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {activeTab === 'crypto' && lastUpdated && (
+                <span style={{ color: '#00ff88', fontSize: '11px' }}>🟢 Updated {lastUpdated}</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Toast Message */}
         {message && (
-          <div style={{ background: messageType === 'success' ? 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,200,100,0.08))' : 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(200,0,0,0.08))', border: `1px solid ${messageType === 'success' ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, color: messageType === 'success' ? '#00ff88' : '#ff4444', padding: '12px 20px', borderRadius: '12px', marginBottom: '20px', fontWeight: '500', backdropFilter: 'blur(10px)' }}>
+          <div style={{ background: messageType === 'success' ? 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,200,100,0.08))' : 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(200,0,0,0.08))', border: `1px solid ${messageType === 'success' ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, color: messageType === 'success' ? '#00ff88' : '#ff4444', padding: '12px 20px', borderRadius: '12px', marginBottom: '20px', fontWeight: '500' }}>
             {message}
           </div>
         )}
@@ -269,7 +282,7 @@ function Dashboard({ user, onLogout }) {
         {/* Crypto Tab */}
         {activeTab === 'crypto' && (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px' }}>
-            {prices.map((coin, i) => (
+            {prices.map((coin) => (
               <GlassCard key={coin.id} id={`crypto-${coin.id}`} hover style={{ padding: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                   <img src={coin.image} alt={coin.name} style={{ width: isMobile ? '30px' : '36px', height: isMobile ? '30px' : '36px', borderRadius: '50%' }}
@@ -282,14 +295,12 @@ function Dashboard({ user, onLogout }) {
                 <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
                   ₹{coin.price_inr.toLocaleString('en-IN')}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ marginBottom: '12px' }}>
                   <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
                     {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
                   </span>
                 </div>
-                <button
-                  style={{ width: '100%', padding: '9px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '13px', letterSpacing: '0.3px' }}
-                  onClick={() => handleBuyCrypto(coin)}>
+                <button style={{ width: '100%', padding: '9px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }} onClick={() => handleBuyCrypto(coin)}>
                   Buy Now
                 </button>
               </GlassCard>
@@ -301,7 +312,7 @@ function Dashboard({ user, onLogout }) {
         {activeTab === 'stocks' && (
           <div>
             {stocksLoading ? (
-              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px', fontSize: '16px' }}>
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
                 <div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>
                 Loading stocks...
               </div>
@@ -315,7 +326,7 @@ function Dashboard({ user, onLogout }) {
                 {stocks.map(stock => (
                   <GlassCard key={stock.symbol} id={`stock-${stock.symbol}`} hover style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? '20px' : '24px' }}>{stock.flag}</div>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{stock.flag}</div>
                       <div>
                         <div style={{ fontWeight: '700', fontSize: isMobile ? '11px' : '12px', color: '#fff' }}>{stock.name}</div>
                         <div style={{ color: '#555', fontSize: '10px' }}>{stock.symbol}</div>
@@ -399,6 +410,47 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
+        {/* News Tab */}
+        {activeTab === 'news' && (
+          <div>
+            {newsLoading ? (
+              <div style={{ textAlign: 'center', color: '#00d4ff', marginTop: '80px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📰</div>
+                Loading latest news...
+              </div>
+            ) : news.length === 0 ? (
+              <div style={{ textAlign: 'center', marginTop: '80px' }}>
+                <div style={{ fontSize: '50px', marginBottom: '16px' }}>📰</div>
+                <button style={{ padding: '14px 32px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '15px' }} onClick={fetchNews}>Load News</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ color: '#555', fontSize: '12px' }}>📡 Source: CoinDesk</span>
+                  <button style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(0,212,255,0.2)', background: 'rgba(0,212,255,0.06)', color: '#00d4ff', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }} onClick={fetchNews}>🔄 Refresh</button>
+                </div>
+                {news.map((article, i) => (
+                  <GlassCard key={i} id={`news-${i}`} hover style={{ padding: '18px' }}>
+                    <a href={article.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '700', fontSize: isMobile ? '13px' : '15px', color: '#fff', marginBottom: '8px', lineHeight: 1.4 }}>{article.title}</div>
+                          <div style={{ color: '#666', fontSize: '12px', lineHeight: 1.5, marginBottom: '10px' }}>{article.description}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ color: '#00d4ff', fontSize: '11px', fontWeight: '600' }}>✍️ {article.author}</span>
+                            <span style={{ color: '#444', fontSize: '11px' }}>🕐 {new Date(article.pubDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                        <div style={{ color: '#00d4ff', fontSize: '18px', flexShrink: 0 }}>→</div>
+                      </div>
+                    </a>
+                  </GlassCard>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Portfolio Tab */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
@@ -423,12 +475,8 @@ function Dashboard({ user, onLogout }) {
                           <span style={{ background: holding.asset_type === 'crypto' ? 'rgba(0,212,255,0.12)' : 'rgba(255,204,0,0.12)', color: holding.asset_type === 'crypto' ? '#00d4ff' : '#ffcc00', padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase' }}>{holding.asset_type}</span>
                         </div>
                         <div style={{ background: isProfit ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', border: `1px solid ${isProfit ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, borderRadius: '12px', padding: '8px 16px', textAlign: 'right' }}>
-                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontWeight: '800', fontSize: '16px' }}>
-                            {isProfit ? '+' : ''}₹{pnl.toLocaleString('en-IN')}
-                          </div>
-                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontSize: '12px', opacity: 0.8 }}>
-                            {isProfit ? '+' : ''}{pnlPercent}%
-                          </div>
+                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontWeight: '800', fontSize: '16px' }}>{isProfit ? '+' : ''}₹{pnl.toLocaleString('en-IN')}</div>
+                          <div style={{ color: isProfit ? '#00ff88' : '#ff4444', fontSize: '12px', opacity: 0.8 }}>{isProfit ? '+' : ''}{pnlPercent}%</div>
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '14px' }}>
@@ -489,7 +537,7 @@ function Dashboard({ user, onLogout }) {
             <button key={item.id}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'transparent', border: 'none', color: activeTab === item.id ? '#00d4ff' : '#444', cursor: 'pointer', padding: '4px 0' }}
               onClick={() => handleNav(item.id)}>
-              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
               <span style={{ fontSize: '9px', marginTop: '3px', fontWeight: activeTab === item.id ? '700' : '400' }}>{item.label}</span>
               {activeTab === item.id && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#00d4ff', marginTop: '3px' }} />}
             </button>
