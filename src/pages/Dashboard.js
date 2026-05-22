@@ -15,6 +15,12 @@ const STOCKS = [
   { symbol: 'AMZN', name: 'Amazon', flag: '🌍' },
 ];
 
+const GECKO_IDS = {
+  btc: 'bitcoin', eth: 'ethereum', sol: 'solana',
+  xrp: 'ripple', doge: 'dogecoin', ada: 'cardano',
+  ltc: 'litecoin', dot: 'polkadot', avax: 'avalanche-2', link: 'chainlink'
+};
+
 function Dashboard({ user, onLogout }) {
   const [prices, setPrices] = useState([]);
   const [stocks, setStocks] = useState([]);
@@ -91,7 +97,8 @@ function Dashboard({ user, onLogout }) {
     setChartLoading(true);
     setChartData([]);
     try {
-      const res = await getCryptoChart(coin.geckoId, days);
+      const geckoId = GECKO_IDS[coin.id] || coin.id;
+      const res = await getCryptoChart(geckoId, days);
       setChartData(res.data.data);
     } catch (err) {}
     setChartLoading(false);
@@ -102,7 +109,8 @@ function Dashboard({ user, onLogout }) {
     setChartLoading(true);
     setChartData([]);
     try {
-      const res = await getCryptoChart(chartModal.geckoId, days);
+      const geckoId = GECKO_IDS[chartModal.id] || chartModal.id;
+      const res = await getCryptoChart(geckoId, days);
       setChartData(res.data.data);
     } catch (err) {}
     setChartLoading(false);
