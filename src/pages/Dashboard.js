@@ -31,6 +31,14 @@ function Dashboard({ user, onLogout }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [alerts, setAlerts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('priceAlerts') || '[]'); } catch { return []; }
+  });
+  const [triggeredAlerts, setTriggeredAlerts] = useState([]);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertCoin, setAlertCoin] = useState(null);
+  const [alertPrice, setAlertPrice] = useState('');
+  const [alertType, setAlertType] = useState('above');
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -41,14 +49,29 @@ function Dashboard({ user, onLogout }) {
   useEffect(() => {
     fetchPrices();
     fetchPortfolio();
-    // Auto-refresh crypto every 15 seconds
-    const interval = setInterval(() => {
-      fetchPrices();
-    }, 15000);
+    const interval = setInterval(() => { fetchPrices(); }, 15000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
+
+  useEffect(() => {
+    if (prices.length === 0 || alerts.length === 0) return;
+    const newTriggered = [];
+    const remainingAlerts = alerts.filter(alert => {
+      const coin = prices.find(p => p.id === alert.coinId);
+      if (!coin) return true;
+      const currentPrice = coin.price_inr;
+      const hit = alert.type === 'above' ? currentPrice >= alert.targetPrice : currentPrice <= alert.targetPrice;
+      if (hit) { newTriggered.push({ ...alert, currentPrice, coinName: coin.name }); return false; }
+      return true;
+    });
+    if (newTriggered.length > 0) {
+      setTriggeredAlerts(prev => [...prev, ...newTriggered]);
+      setAlerts(remainingAlerts);
+      localStorage.setItem('priceAlerts', JSON.stringify(remainingAlerts));
+    }
+  }, [prices]);
 
   const fetchPrices = async () => {
     try {
@@ -117,6 +140,23 @@ function Dashboard({ user, onLogout }) {
     } catch (err) { showMessage(err.response?.data?.message || 'Sell failed!', 'error'); }
   };
 
+  const openAlertModal = (coin) => { setAlertCoin(coin); setAlertPrice(''); setAlertType('above'); setShowAlertModal(true); };
+  const saveAlert = () => {
+    if (!alertPrice || isNaN(alertPrice)) return;
+    const newAlert = { id: Date.now(), coinId: alertCoin.id, coinName: alertCoin.name, targetPrice: parseFloat(alertPrice), type: alertType };
+    const updated = [...alerts, newAlert];
+    setAlerts(updated);
+    localStorage.setItem('priceAlerts', JSON.stringify(updated));
+    setShowAlertModal(false);
+    showMessage(`🔔 Alert set: ${alertCoin.name} ${alertType} ₹${parseFloat(alertPrice).toLocaleString('en-IN')}`);
+  };
+  const removeAlert = (id) => {
+    const updated = alerts.filter(a => a.id !== id);
+    setAlerts(updated);
+    localStorage.setItem('priceAlerts', JSON.stringify(updated));
+  };
+  const dismissTriggered = (id) => setTriggeredAlerts(prev => prev.filter(a => a.id !== id));
+
   const balance = portfolio ? parseFloat(portfolio.user.virtual_balance) : 0;
   const totalInvested = portfolio ? parseFloat(portfolio.total_invested) : 0;
   const totalCurrentValue = portfolio ? parseFloat(portfolio.total_current_value || 0) : 0;
@@ -128,6 +168,7 @@ function Dashboard({ user, onLogout }) {
     { id: 'stocks', icon: '📊', label: 'Stocks' },
     { id: 'signals', icon: '🤖', label: 'Signals' },
     { id: 'news', icon: '📰', label: 'News' },
+    { id: 'alerts', icon: '🔔', label: 'Alerts', badge: alerts.length },
     { id: 'portfolio', icon: '💼', label: 'Portfolio' },
     { id: 'transactions', icon: '📜', label: 'History' },
   ];
@@ -171,6 +212,54 @@ function Dashboard({ user, onLogout }) {
         </>
       )}
 
+      {/* Triggered Alert Popups */}
+      {triggeredAlerts.map(alert => (
+        <div key={alert.id} style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 9999, background: 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(255,150,0,0.1))', border: '1px solid rgba(255,204,0,0.4)', borderRadius: '14px', padding: '16px 20px', maxWidth: '320px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(255,204,0,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ color: '#ffcc00', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>🔔 Price Alert Triggered!</div>
+              <div style={{ color: '#fff', fontSize: '13px' }}>{alert.coinName} reached ₹{alert.currentPrice.toLocaleString('en-IN')}</div>
+              <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>Target: {alert.type === 'above' ? '▲' : '▼'} ₹{alert.targetPrice.toLocaleString('en-IN')}</div>
+            </div>
+            <button onClick={() => dismissTriggered(alert.id)} style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '18px', marginLeft: '12px' }}>✕</button>
+          </div>
+        </div>
+      ))}
+
+      {/* Alert Modal */}
+      {showAlertModal && alertCoin && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#0d0d1f', border: '1px solid rgba(255,204,0,0.2)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '380px' }}>
+            <div style={{ fontWeight: '800', fontSize: '18px', marginBottom: '6px' }}>🔔 Set Price Alert</div>
+            <div style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>{alertCoin.name} — Current: ₹{alertCoin.price_inr.toLocaleString('en-IN')}</div>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase' }}>Alert Type</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {['above', 'below'].map(t => (
+                  <button key={t} onClick={() => setAlertType(t)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: `1px solid ${alertType === t ? 'rgba(255,204,0,0.4)' : 'rgba(255,255,255,0.08)'}`, background: alertType === t ? 'rgba(255,204,0,0.1)' : 'transparent', color: alertType === t ? '#ffcc00' : '#666', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                    {t === 'above' ? '▲ Price Goes Above' : '▼ Price Goes Below'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase' }}>Target Price (₹)</div>
+              <input
+                type="number"
+                value={alertPrice}
+                onChange={e => setAlertPrice(e.target.value)}
+                placeholder="Enter target price..."
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setShowAlertModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#666', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
+              <button onClick={saveAlert} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #ffcc00, #ff8800)', color: '#000', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}>Set Alert 🔔</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Header */}
       {isMobile && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px', boxSizing: 'border-box' }}>
@@ -192,9 +281,10 @@ function Dashboard({ user, onLogout }) {
         <div style={{ position: 'fixed', top: '56px', left: 0, right: 0, zIndex: 999, background: 'rgba(5,5,16,0.98)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map(item => (
             <button key={item.id}
-              style={{ padding: '13px 16px', borderRadius: '12px', border: 'none', background: activeTab === item.id ? 'rgba(0,212,255,0.12)' : 'transparent', color: activeTab === item.id ? '#00d4ff' : '#888', cursor: 'pointer', fontSize: '15px', textAlign: 'left', fontWeight: activeTab === item.id ? '600' : '400', borderLeft: activeTab === item.id ? '3px solid #00d4ff' : '3px solid transparent' }}
+              style={{ padding: '13px 16px', borderRadius: '12px', border: 'none', background: activeTab === item.id ? 'rgba(0,212,255,0.12)' : 'transparent', color: activeTab === item.id ? '#00d4ff' : '#888', cursor: 'pointer', fontSize: '15px', textAlign: 'left', fontWeight: activeTab === item.id ? '600' : '400', borderLeft: activeTab === item.id ? '3px solid #00d4ff' : '3px solid transparent', display: 'flex', alignItems: 'center', gap: '8px' }}
               onClick={() => handleNav(item.id)}>
               {item.icon} {item.label}
+              {item.badge > 0 && <span style={{ background: '#ffcc00', color: '#000', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: '800' }}>{item.badge}</span>}
             </button>
           ))}
           <button style={{ padding: '13px 16px', borderRadius: '12px', border: 'none', background: 'rgba(255,68,68,0.08)', color: '#ff4444', cursor: 'pointer', fontSize: '15px', textAlign: 'left', marginTop: '4px' }} onClick={onLogout}>🚪 Logout</button>
@@ -218,14 +308,15 @@ function Dashboard({ user, onLogout }) {
               <div style={{ color: '#555', fontSize: '10px', marginTop: '2px' }}>Virtual Balance</div>
             </div>
           </div>
-          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px' }}>
+          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px', overflowY: 'auto' }}>
             {navItems.map(item => (
               <button key={item.id}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '12px', border: 'none', background: activeTab === item.id ? 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,102,255,0.08))' : 'transparent', color: activeTab === item.id ? '#00d4ff' : '#666', cursor: 'pointer', fontSize: '14px', textAlign: 'left', fontWeight: activeTab === item.id ? '600' : '400', borderLeft: activeTab === item.id ? '3px solid #00d4ff' : '3px solid transparent', transition: 'all 0.2s ease' }}
                 onClick={() => handleNav(item.id)}>
                 <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 <span>{item.label}</span>
-                {activeTab === item.id && <span style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: '#00d4ff' }} />}
+                {item.badge > 0 && <span style={{ marginLeft: 'auto', background: '#ffcc00', color: '#000', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: '800' }}>{item.badge}</span>}
+                {activeTab === item.id && !item.badge && <span style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: '#00d4ff' }} />}
               </button>
             ))}
           </nav>
@@ -243,14 +334,13 @@ function Dashboard({ user, onLogout }) {
               {activeTab === 'stocks' && <><span style={{ color: '#00d4ff' }}>Stock</span> Market</>}
               {activeTab === 'signals' && <><span style={{ color: '#00d4ff' }}>AI</span> Signals</>}
               {activeTab === 'news' && <><span style={{ color: '#00d4ff' }}>Live</span> News</>}
+              {activeTab === 'alerts' && <><span style={{ color: '#ffcc00' }}>Price</span> Alerts</>}
               {activeTab === 'portfolio' && <>My <span style={{ color: '#00d4ff' }}>Portfolio</span></>}
               {activeTab === 'transactions' && <>Transaction <span style={{ color: '#00d4ff' }}>History</span></>}
             </h2>
             <div style={{ color: '#555', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              {activeTab === 'crypto' && lastUpdated && (
-                <span style={{ color: '#00ff88', fontSize: '11px' }}>🟢 Updated {lastUpdated}</span>
-              )}
+              {activeTab === 'crypto' && lastUpdated && <span style={{ color: '#00ff88', fontSize: '11px' }}>🟢 Updated {lastUpdated}</span>}
             </div>
           </div>
         </div>
@@ -295,14 +385,15 @@ function Dashboard({ user, onLogout }) {
                 <div style={{ color: '#00d4ff', fontWeight: '800', fontSize: isMobile ? '14px' : '16px', marginBottom: '4px' }}>
                   ₹{coin.price_inr.toLocaleString('en-IN')}
                 </div>
-                <div style={{ marginBottom: '12px' }}>
+                <div style={{ marginBottom: '10px' }}>
                   <span style={{ color: coin.change_24h >= 0 ? '#00ff88' : '#ff4444', fontSize: '12px', fontWeight: '600', background: coin.change_24h >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '2px 8px', borderRadius: '20px' }}>
                     {coin.change_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change_24h).toFixed(2)}%
                   </span>
                 </div>
-                <button style={{ width: '100%', padding: '9px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }} onClick={() => handleBuyCrypto(coin)}>
-                  Buy Now
-                </button>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #00d4ff, #0066ff)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }} onClick={() => handleBuyCrypto(coin)}>Buy</button>
+                  <button style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontSize: '14px' }} onClick={() => openAlertModal(coin)} title="Set Alert">🔔</button>
+                </div>
               </GlassCard>
             ))}
           </div>
@@ -451,6 +542,51 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
 
+        {/* Alerts Tab */}
+        {activeTab === 'alerts' && (
+          <div style={{ paddingBottom: '80px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ color: '#555', fontSize: '13px' }}>{alerts.length} active alert{alerts.length !== 1 ? 's' : ''}</span>
+              {prices.length > 0 && (
+                <button style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid rgba(255,204,0,0.3)', background: 'rgba(255,204,0,0.08)', color: '#ffcc00', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                  onClick={() => { const coin = prices[0]; openAlertModal(coin); }}>
+                  + New Alert
+                </button>
+              )}
+            </div>
+            {alerts.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#555', marginTop: '60px' }}>
+                <div style={{ fontSize: '60px', marginBottom: '16px' }}>🔔</div>
+                <p style={{ marginBottom: '20px' }}>No alerts set yet</p>
+                <p style={{ fontSize: '13px', color: '#444' }}>Go to 🪙 Crypto tab and click 🔔 on any coin</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {alerts.map(alert => {
+                  const coin = prices.find(p => p.id === alert.coinId);
+                  const currentPrice = coin ? coin.price_inr : null;
+                  return (
+                    <GlassCard key={alert.id} style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: '700', fontSize: '15px', color: '#fff', marginBottom: '4px' }}>{alert.coinName}</div>
+                          <div style={{ color: '#ffcc00', fontSize: '13px', marginBottom: '4px' }}>
+                            {alert.type === 'above' ? '▲ Above' : '▼ Below'} ₹{alert.targetPrice.toLocaleString('en-IN')}
+                          </div>
+                          {currentPrice && (
+                            <div style={{ color: '#555', fontSize: '11px' }}>Current: ₹{currentPrice.toLocaleString('en-IN')}</div>
+                          )}
+                        </div>
+                        <button onClick={() => removeAlert(alert.id)} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', color: '#ff4444', cursor: 'pointer', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '600' }}>Remove</button>
+                      </div>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Portfolio Tab */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
@@ -535,9 +671,10 @@ function Dashboard({ user, onLogout }) {
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'rgba(5,5,16,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 4px' }}>
           {navItems.map(item => (
             <button key={item.id}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'transparent', border: 'none', color: activeTab === item.id ? '#00d4ff' : '#444', cursor: 'pointer', padding: '4px 0' }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'transparent', border: 'none', color: activeTab === item.id ? '#00d4ff' : '#444', cursor: 'pointer', padding: '4px 0', position: 'relative' }}
               onClick={() => handleNav(item.id)}>
               <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              {item.badge > 0 && <span style={{ position: 'absolute', top: 0, right: '20%', background: '#ffcc00', color: '#000', borderRadius: '50%', width: '14px', height: '14px', fontSize: '9px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.badge}</span>}
               <span style={{ fontSize: '9px', marginTop: '3px', fontWeight: activeTab === item.id ? '700' : '400' }}>{item.label}</span>
               {activeTab === item.id && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#00d4ff', marginTop: '3px' }} />}
             </button>
