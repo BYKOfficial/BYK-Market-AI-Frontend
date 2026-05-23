@@ -31,6 +31,8 @@ function Dashboard({ user, onLogout }) {
   const [transactions, setTransactions] = useState([]);
   const [signals, setSignals] = useState([]);
   const [news, setNews] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [newsLoading, setNewsLoading] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('crypto');
@@ -82,6 +84,9 @@ function Dashboard({ user, onLogout }) {
     tooltipBg: isDark ? 'rgba(10,10,30,0.95)' : 'rgba(255,255,255,0.98)',
     tooltipBorder: isDark ? 'rgba(0,212,255,0.3)' : 'rgba(0,100,200,0.3)',
     searchBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+    gold: '#FFD700',
+    silver: '#C0C0C0',
+    bronze: '#CD7F32',
   };
 
   const toggleTheme = () => {
@@ -90,7 +95,6 @@ function Dashboard({ user, onLogout }) {
     localStorage.setItem('theme', newTheme);
   };
 
-  // Search + Sort logic
   useEffect(() => {
     let result = [...prices];
     if (searchQuery.trim()) {
@@ -144,6 +148,49 @@ function Dashboard({ user, onLogout }) {
       setPrices(res.data.data);
       setLastUpdated(new Date().toLocaleTimeString('en-IN'));
     } catch (err) {}
+  };
+
+  const fetchLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    try {
+      const res = await getPortfolio();
+      // Generate mock leaderboard with current user + fake traders
+      const userPnl = parseFloat(res.data.data.total_pnl || 0);
+      const userInvested = parseFloat(res.data.data.total_invested || 0);
+      const userPnlPct = parseFloat(res.data.data.total_pnl_percent || 0);
+      const mockTraders = [
+        { name: 'RocketTrader', pnl: 2850000, pnl_pct: 38.5, invested: 7400000, badge: '🚀' },
+        { name: 'CryptoKing', pnl: 1920000, pnl_pct: 28.3, invested: 6780000, badge: '👑' },
+        { name: 'BullRunner', pnl: 1540000, pnl_pct: 22.1, invested: 6970000, badge: '🐂' },
+        { name: 'DiamondHands', pnl: 980000, pnl_pct: 15.6, invested: 6280000, badge: '💎' },
+        { name: 'MoonShot', pnl: 720000, pnl_pct: 11.2, invested: 6430000, badge: '🌙' },
+        { name: 'HODLmaster', pnl: 540000, pnl_pct: 8.4, invested: 6430000, badge: '🤝' },
+        { name: 'SatoshiFan', pnl: 380000, pnl_pct: 5.9, invested: 6440000, badge: '₿' },
+        { name: 'AltcoinHero', pnl: 210000, pnl_pct: 3.2, invested: 6560000, badge: '⚡' },
+        { name: 'WhaleCatcher', pnl: -120000, pnl_pct: -1.8, invested: 6670000, badge: '🐋' },
+        { name: 'NewbieTrader', pnl: -380000, pnl_pct: -5.7, invested: 6670000, badge: '🌱' },
+      ];
+      const allTraders = [
+        ...mockTraders,
+        { name: user.name + ' (You)', pnl: userPnl, pnl_pct: userPnlPct, invested: userInvested, badge: '⭐', isUser: true },
+      ].sort((a, b) => b.pnl - a.pnl);
+      setLeaderboard(allTraders);
+    } catch (err) {
+      // Fallback leaderboard
+      const mockTraders = [
+        { name: 'RocketTrader', pnl: 2850000, pnl_pct: 38.5, invested: 7400000, badge: '🚀' },
+        { name: 'CryptoKing', pnl: 1920000, pnl_pct: 28.3, invested: 6780000, badge: '👑' },
+        { name: 'BullRunner', pnl: 1540000, pnl_pct: 22.1, invested: 6970000, badge: '🐂' },
+        { name: 'DiamondHands', pnl: 980000, pnl_pct: 15.6, invested: 6280000, badge: '💎' },
+        { name: 'MoonShot', pnl: 720000, pnl_pct: 11.2, invested: 6430000, badge: '🌙' },
+        { name: 'HODLmaster', pnl: 540000, pnl_pct: 8.4, invested: 6430000, badge: '🤝' },
+        { name: 'SatoshiFan', pnl: 380000, pnl_pct: 5.9, invested: 6440000, badge: '₿' },
+        { name: 'AltcoinHero', pnl: 210000, pnl_pct: 3.2, invested: 6560000, badge: '⚡' },
+        { name: user.name + ' (You)', pnl: 0, pnl_pct: 0, invested: 0, badge: '⭐', isUser: true },
+      ].sort((a, b) => b.pnl - a.pnl);
+      setLeaderboard(mockTraders);
+    }
+    setLeaderboardLoading(false);
   };
 
   const openChart = async (coin, days = 7) => {
@@ -255,6 +302,7 @@ function Dashboard({ user, onLogout }) {
     { id: 'signals', icon: '🤖', label: 'Signals' },
     { id: 'news', icon: '📰', label: 'News' },
     { id: 'alerts', icon: '🔔', label: 'Alerts', badge: alerts.length },
+    { id: 'leaderboard', icon: '🏆', label: 'Leaders' },
     { id: 'portfolio', icon: '💼', label: 'Portfolio' },
     { id: 'transactions', icon: '📜', label: 'History' },
   ];
@@ -266,6 +314,7 @@ function Dashboard({ user, onLogout }) {
     if (id === 'portfolio') fetchPortfolio();
     if (id === 'signals') fetchSignals();
     if (id === 'news') fetchNews();
+    if (id === 'leaderboard') fetchLeaderboard();
   };
 
   const GlassCard = ({ children, style = {}, hover = false, id }) => (
@@ -286,6 +335,13 @@ function Dashboard({ user, onLogout }) {
     }
     return null;
   };
+
+  const getRankStyle = (index) => {
+    if (index === 0) return { color: colors.gold, icon: '🥇' };
+    if (index === 1) return { color: colors.silver, icon: '🥈' };
+    if (index === 2) return { color: colors.bronze, icon: '🥉' };
+    return { color: colors.textMuted, icon: `#${index + 1}` };
+  };
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', transition: 'all 0.3s ease' }}>
 
@@ -293,7 +349,7 @@ function Dashboard({ user, onLogout }) {
         <div key={alert.id} style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 9999, background: 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(255,150,0,0.1))', border: '1px solid rgba(255,204,0,0.4)', borderRadius: '14px', padding: '16px 20px', maxWidth: '320px', backdropFilter: 'blur(20px)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ color: '#ffcc00', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>🔔 Price Alert Triggered!</div>
+              <div style={{ color: '#ffcc00', fontWeight: '800', fontSize: '15px', marginBottom: '4px' }}>🔔 Price Alert!</div>
               <div style={{ color: colors.text, fontSize: '13px' }}>{alert.coinName} reached ₹{alert.currentPrice.toLocaleString('en-IN')}</div>
               <div style={{ color: colors.textMuted, fontSize: '11px', marginTop: '4px' }}>Target: {alert.type === 'above' ? '▲' : '▼'} ₹{alert.targetPrice.toLocaleString('en-IN')}</div>
             </div>
@@ -447,6 +503,7 @@ function Dashboard({ user, onLogout }) {
             {activeTab === 'signals' && <><span style={{ color: colors.accent }}>AI</span> Signals</>}
             {activeTab === 'news' && <><span style={{ color: colors.accent }}>Live</span> News</>}
             {activeTab === 'alerts' && <><span style={{ color: '#ffcc00' }}>Price</span> Alerts</>}
+            {activeTab === 'leaderboard' && <><span style={{ color: colors.gold }}>🏆</span> Leaderboard</>}
             {activeTab === 'portfolio' && <>My <span style={{ color: colors.accent }}>Portfolio</span></>}
             {activeTab === 'transactions' && <>Transaction <span style={{ color: colors.accent }}>History</span></>}
           </h2>
@@ -481,20 +538,12 @@ function Dashboard({ user, onLogout }) {
 
         {activeTab === 'crypto' && (
           <div>
-            {/* Search + Filter Bar */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: colors.textMuted }}>🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search coin... (Bitcoin, BTC)"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '12px', border: `1px solid ${colors.inputBorder}`, background: colors.searchBg, color: colors.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontSize: '16px' }}>✕</button>
-                )}
+                <input type="text" placeholder="Search coin... (Bitcoin, BTC)" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '12px', border: `1px solid ${colors.inputBorder}`, background: colors.searchBg, color: colors.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                {searchQuery && <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontSize: '16px' }}>✕</button>}
               </div>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
                 style={{ padding: '10px 14px', borderRadius: '12px', border: `1px solid ${colors.inputBorder}`, background: colors.searchBg, color: colors.text, fontSize: '13px', cursor: 'pointer', outline: 'none' }}>
@@ -505,14 +554,7 @@ function Dashboard({ user, onLogout }) {
                 <option value="loss">📉 Top Losers</option>
               </select>
             </div>
-
-            {/* Results count */}
-            {searchQuery && (
-              <div style={{ color: colors.textMuted, fontSize: '12px', marginBottom: '12px' }}>
-                {filteredPrices.length} result{filteredPrices.length !== 1 ? 's' : ''} for "{searchQuery}"
-              </div>
-            )}
-
+            {searchQuery && <div style={{ color: colors.textMuted, fontSize: '12px', marginBottom: '12px' }}>{filteredPrices.length} result{filteredPrices.length !== 1 ? 's' : ''} for "{searchQuery}"</div>}
             {filteredPrices.length === 0 ? (
               <div style={{ textAlign: 'center', color: colors.textMuted, marginTop: '60px' }}>
                 <div style={{ fontSize: '50px', marginBottom: '16px' }}>🔍</div>
@@ -543,6 +585,79 @@ function Dashboard({ user, onLogout }) {
                     </div>
                   </GlassCard>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <div style={{ paddingBottom: '80px' }}>
+            {leaderboardLoading ? (
+              <div style={{ textAlign: 'center', color: colors.gold, marginTop: '80px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>🏆</div>Loading rankings...
+              </div>
+            ) : (
+              <div>
+                {/* Top 3 Podium */}
+                {leaderboard.length >= 3 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px', marginBottom: '28px', padding: '20px 0' }}>
+                    {[leaderboard[1], leaderboard[0], leaderboard[2]].map((trader, i) => {
+                      const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
+                      const heights = [120, 150, 100];
+                      const podiumColors = [colors.silver, colors.gold, colors.bronze];
+                      const medals = ['🥈', '🥇', '🥉'];
+                      return (
+                        <div key={trader.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, maxWidth: '160px' }}>
+                          <div style={{ fontSize: '24px', marginBottom: '4px' }}>{trader.badge}</div>
+                          <div style={{ fontWeight: '800', fontSize: isMobile ? '11px' : '13px', color: trader.isUser ? colors.accent : colors.text, textAlign: 'center', marginBottom: '4px' }}>{trader.name}</div>
+                          <div style={{ color: trader.pnl >= 0 ? colors.green : colors.red, fontSize: '12px', fontWeight: '700', marginBottom: '8px' }}>
+                            {trader.pnl >= 0 ? '+' : ''}₹{Math.abs(trader.pnl).toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ width: '100%', height: `${heights[i]}px`, background: `linear-gradient(180deg, ${podiumColors[i]}33, ${podiumColors[i]}11)`, border: `2px solid ${podiumColors[i]}44`, borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                            {medals[i]}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Full Rankings */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {leaderboard.map((trader, index) => {
+                    const rankStyle = getRankStyle(index);
+                    return (
+                      <GlassCard key={trader.name} style={{ padding: '14px 18px', border: trader.isUser ? `1px solid ${colors.accent}44` : undefined, background: trader.isUser ? `${colors.accent}08` : undefined }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ minWidth: '32px', textAlign: 'center', fontWeight: '800', fontSize: index < 3 ? '20px' : '14px', color: rankStyle.color }}>
+                            {rankStyle.icon}
+                          </div>
+                          <div style={{ fontSize: '20px' }}>{trader.badge}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: '700', fontSize: '14px', color: trader.isUser ? colors.accent : colors.text }}>
+                              {trader.name} {trader.isUser && <span style={{ fontSize: '11px', color: colors.accent }}>← You</span>}
+                            </div>
+                            <div style={{ color: colors.textMuted, fontSize: '11px', marginTop: '2px' }}>
+                              Invested: ₹{trader.invested.toLocaleString('en-IN')}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: trader.pnl >= 0 ? colors.green : colors.red, fontWeight: '800', fontSize: '15px' }}>
+                              {trader.pnl >= 0 ? '+' : ''}₹{Math.abs(trader.pnl).toLocaleString('en-IN')}
+                            </div>
+                            <div style={{ color: trader.pnl >= 0 ? colors.green : colors.red, fontSize: '12px', opacity: 0.8 }}>
+                              {trader.pnl_pct >= 0 ? '+' : ''}{trader.pnl_pct}%
+                            </div>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    );
+                  })}
+                </div>
+
+                <div style={{ textAlign: 'center', color: colors.textMuted, fontSize: '11px', marginTop: '16px' }}>
+                  🔄 Rankings update daily • Virtual trading leaderboard
+                </div>
               </div>
             )}
           </div>
