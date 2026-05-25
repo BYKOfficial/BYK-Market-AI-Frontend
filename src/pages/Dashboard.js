@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getCryptoPrices, getPortfolio, buyAsset, sellAsset, getStockPrice, getTransactions, getSignals, getNews, getCryptoChart } from '../services/api';
+import NextBTC from './NextBTC';
 
 const STOCKS = [
   { symbol: 'RELIANCE.BO', name: 'Reliance Industries', flag: '🇮🇳' },
@@ -154,7 +155,6 @@ function Dashboard({ user, onLogout }) {
     setLeaderboardLoading(true);
     try {
       const res = await getPortfolio();
-      // Generate mock leaderboard with current user + fake traders
       const userPnl = parseFloat(res.data.data.total_pnl || 0);
       const userInvested = parseFloat(res.data.data.total_invested || 0);
       const userPnlPct = parseFloat(res.data.data.total_pnl_percent || 0);
@@ -176,7 +176,6 @@ function Dashboard({ user, onLogout }) {
       ].sort((a, b) => b.pnl - a.pnl);
       setLeaderboard(allTraders);
     } catch (err) {
-      // Fallback leaderboard
       const mockTraders = [
         { name: 'RocketTrader', pnl: 2850000, pnl_pct: 38.5, invested: 7400000, badge: '🚀' },
         { name: 'CryptoKing', pnl: 1920000, pnl_pct: 28.3, invested: 6780000, badge: '👑' },
@@ -303,6 +302,7 @@ function Dashboard({ user, onLogout }) {
     { id: 'news', icon: '📰', label: 'News' },
     { id: 'alerts', icon: '🔔', label: 'Alerts', badge: alerts.length },
     { id: 'leaderboard', icon: '🏆', label: 'Leaders' },
+    { id: 'nextbtc', icon: '🔮', label: 'Next BTC' },
     { id: 'portfolio', icon: '💼', label: 'Portfolio' },
     { id: 'transactions', icon: '📜', label: 'History' },
   ];
@@ -342,6 +342,7 @@ function Dashboard({ user, onLogout }) {
     if (index === 2) return { color: colors.bronze, icon: '🥉' };
     return { color: colors.textMuted, icon: `#${index + 1}` };
   };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', transition: 'all 0.3s ease' }}>
 
@@ -504,6 +505,7 @@ function Dashboard({ user, onLogout }) {
             {activeTab === 'news' && <><span style={{ color: colors.accent }}>Live</span> News</>}
             {activeTab === 'alerts' && <><span style={{ color: '#ffcc00' }}>Price</span> Alerts</>}
             {activeTab === 'leaderboard' && <><span style={{ color: colors.gold }}>🏆</span> Leaderboard</>}
+            {activeTab === 'nextbtc' && <><span style={{ color: '#00d4ff' }}>🔮</span> Next Bitcoin</>}
             {activeTab === 'portfolio' && <>My <span style={{ color: colors.accent }}>Portfolio</span></>}
             {activeTab === 'transactions' && <>Transaction <span style={{ color: colors.accent }}>History</span></>}
           </h2>
@@ -598,11 +600,9 @@ function Dashboard({ user, onLogout }) {
               </div>
             ) : (
               <div>
-                {/* Top 3 Podium */}
                 {leaderboard.length >= 3 && (
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px', marginBottom: '28px', padding: '20px 0' }}>
                     {[leaderboard[1], leaderboard[0], leaderboard[2]].map((trader, i) => {
-                      const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
                       const heights = [120, 150, 100];
                       const podiumColors = [colors.silver, colors.gold, colors.bronze];
                       const medals = ['🥈', '🥇', '🥉'];
@@ -621,8 +621,6 @@ function Dashboard({ user, onLogout }) {
                     })}
                   </div>
                 )}
-
-                {/* Full Rankings */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {leaderboard.map((trader, index) => {
                     const rankStyle = getRankStyle(index);
@@ -654,13 +652,16 @@ function Dashboard({ user, onLogout }) {
                     );
                   })}
                 </div>
-
                 <div style={{ textAlign: 'center', color: colors.textMuted, fontSize: '11px', marginTop: '16px' }}>
                   🔄 Rankings update daily • Virtual trading leaderboard
                 </div>
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'nextbtc' && (
+          <NextBTC isDark={isDark} />
         )}
 
         {activeTab === 'stocks' && (
