@@ -107,27 +107,27 @@ export default function NextBTC({ isDark }) {
   const fetchPrices = async () => {
     setPriceLoading(true);
     try {
-      const COINCAP_TO_GECKO = {
-        'ethereum': 'ethereum', 'litecoin': 'litecoin', 'monero': 'monero',
-        'ripple': 'ripple', 'solana': 'solana', 'cardano': 'cardano',
-        'avalanche': 'avalanche-2', 'polkadot': 'polkadot', 'chainlink': 'chainlink',
-        'algorand': 'algorand', 'kaspa': 'kaspa', 'ergo': 'ergo',
-        'alephium': 'alephium', 'nervos-network': 'nervos-network',
-        'digibyte': 'digibyte', 'ravencoin': 'ravencoin', 'kadena': 'kadena',
-        'flux': 'zelcash', 'chia': 'chia', 'stacks': 'blockstack',
-        'thorchain': 'thorchain', 'syscoin': 'syscoin',
+      const SYM_TO_GECKO = {
+        'ETH': 'ethereum', 'LTC': 'litecoin', 'XMR': 'monero',
+        'XRP': 'ripple', 'SOL': 'solana', 'ADA': 'cardano',
+        'AVAX': 'avalanche-2', 'DOT': 'polkadot', 'LINK': 'chainlink',
+        'ALGO': 'algorand', 'KAS': 'kaspa', 'ERG': 'ergo',
+        'CKB': 'nervos-network', 'DGB': 'digibyte', 'RVN': 'ravencoin',
+        'KDA': 'kadena', 'FLUX': 'zelcash', 'XCH': 'chia',
+        'STX': 'blockstack', 'RUNE': 'thorchain', 'SYS': 'syscoin',
       };
-      const ids = Object.keys(COINCAP_TO_GECKO).join(',');
-      const priceRes = await fetch(`https://api.coincap.io/v2/assets?ids=${ids}&limit=50`);
-      const priceData = await priceRes.json();
-      const usdToInr = 85.5;
+      const syms = Object.keys(SYM_TO_GECKO).join(',');
+      const res = await fetch(
+        `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${syms}&tsyms=INR`
+      );
+      const data = await res.json();
       const priceMap = {};
-      priceData.data?.forEach(coin => {
-        const geckoId = COINCAP_TO_GECKO[coin.id];
-        if (geckoId) {
+      Object.entries(data.RAW || {}).forEach(([sym, currencies]) => {
+        const geckoId = SYM_TO_GECKO[sym];
+        if (geckoId && currencies.INR) {
           priceMap[geckoId] = {
-            inr: parseFloat(coin.priceUsd) * usdToInr,
-            inr_24h_change: parseFloat(coin.changePercent24Hr),
+            inr: currencies.INR.PRICE,
+            inr_24h_change: currencies.INR.CHANGEPCT24HOUR,
           };
         }
       });
