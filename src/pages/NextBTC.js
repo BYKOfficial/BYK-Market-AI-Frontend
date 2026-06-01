@@ -104,18 +104,38 @@ export default function NextBTC({ isDark }) {
     red: '#ff4444',
   };
 
-  // Fetch live prices from CoinGecko
   const fetchPrices = async () => {
     setPriceLoading(true);
-    const allCoins = [...ESTABLISHED_COINS, ...NEW_COINS, ...BTC_L2];
-    const geckoIds = [...new Set(allCoins.map(c => c.geckoId).filter(Boolean))];
-    const ids = geckoIds.join(',');
     try {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=inr&include_24hr_change=true`
-      );
-      const data = await res.json();
-      setLivePrices(data);
+      const COINCAP_TO_GECKO = {
+        'ethereum': 'ethereum', 'litecoin': 'litecoin', 'monero': 'monero',
+        'ripple': 'ripple', 'solana': 'solana', 'cardano': 'cardano',
+        'avalanche': 'avalanche-2', 'polkadot': 'polkadot', 'chainlink': 'chainlink',
+        'algorand': 'algorand', 'kaspa': 'kaspa', 'ergo': 'ergo',
+        'alephium': 'alephium', 'nervos-network': 'nervos-network',
+        'digibyte': 'digibyte', 'ravencoin': 'ravencoin', 'kadena': 'kadena',
+        'flux': 'zelcash', 'chia': 'chia', 'stacks': 'blockstack',
+        'thorchain': 'thorchain', 'syscoin': 'syscoin',
+      };
+      const ids = Object.keys(COINCAP_TO_GECKO).join(',');
+      const [fxRes, priceRes] = await Promise.all([
+        fetch('https://open.er-api.com/v6/latest/USD'),
+        fetch(`https://api.coincap.io/v2/assets?ids=${ids}&limit=50`),
+      ]);
+      const fxData = await fxRes.json();
+      const priceData = await priceRes.json();
+      const usdToInr = fxData.rates?.INR || 85;
+      const priceMap = {};
+      priceData.data?.forEach(coin => {
+        const geckoId = COINCAP_TO_GECKO[coin.id];
+        if (geckoId) {
+          priceMap[geckoId] = {
+            inr: parseFloat(coin.priceUsd) * usdToInr,
+            inr_24h_change: parseFloat(coin.changePercent24Hr),
+          };
+        }
+      });
+      setLivePrices(priceMap);
       setLastPriceUpdate(new Date().toLocaleTimeString('en-IN'));
     } catch (e) {
       console.error('Price fetch failed', e);
