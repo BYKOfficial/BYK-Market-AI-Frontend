@@ -118,13 +118,9 @@ export default function NextBTC({ isDark }) {
         'thorchain': 'thorchain', 'syscoin': 'syscoin',
       };
       const ids = Object.keys(COINCAP_TO_GECKO).join(',');
-      const [fxRes, priceRes] = await Promise.all([
-        fetch('https://open.er-api.com/v6/latest/USD'),
-        fetch(`https://api.coincap.io/v2/assets?ids=${ids}&limit=50`),
-      ]);
-      const fxData = await fxRes.json();
+      const priceRes = await fetch(`https://api.coincap.io/v2/assets?ids=${ids}&limit=50`);
       const priceData = await priceRes.json();
-      const usdToInr = fxData.rates?.INR || 85;
+      const usdToInr = 85.5;
       const priceMap = {};
       priceData.data?.forEach(coin => {
         const geckoId = COINCAP_TO_GECKO[coin.id];
