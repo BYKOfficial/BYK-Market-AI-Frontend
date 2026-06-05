@@ -449,9 +449,16 @@ function useGitHubCommits() {
   return commits;
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  SUB-COMPONENTS
-// ══════════════════════════════════════════════════════════════════
+function useBTCDominance() {
+  const [dom, setDom] = useState(null);
+  useEffect(() => {
+    fetch('https://api.coingecko.com/api/v3/global')
+      .then(r => r.json())
+      .then(d => setDom(d?.data?.market_cap_percentage?.btc?.toFixed(1) || null))
+      .catch(() => {});
+  }, []);
+  return dom;
+}
 
 // ── BTC REFERENCE HEADER CARD ─────────────────────────────────────
 function BTCCard({ priceData, fearGreed, btcDomPct }) {
@@ -571,7 +578,12 @@ function CoinCard({ coin, priceData, btcPrice, commits, rank }) {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.REACT_APP_ANTHROPIC_KEY || '',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 350,
@@ -611,7 +623,9 @@ Write exactly 3 sentences. Start with one word verdict (STRONG / MODERATE / WEAK
     },
     {
       label: 'Next Halving',
-      value: halv?.text || (coin.halvingType === 'tail' ? '∞ Tail' : coin.halvingNote ? 'Smooth' : 'N/A'),
+      value: halv?.text || (!coin.nextHalvingDate
+        ? (!coin.hardCap ? '∞ No Halving' : 'Smooth Decay')
+        : 'N/A'),
       sub: coin.halvingNote,
     },
     {
@@ -854,7 +868,7 @@ Write exactly 3 sentences. Start with one word verdict (STRONG / MODERATE / WEAK
 }
 
 // ── COMPARISON TABLE ──────────────────────────────────────────────
-function CompareTable({ coins, priceData, btcPrice }) {
+function CompareTable({ coins, priceData, btcPrice, commits }) {
   return (
     <div style={{
       background: '#0d1117', border: '1px solid #1e293b', borderRadius: 12, overflowX: 'auto',
@@ -926,8 +940,10 @@ function CompareTable({ coins, priceData, btcPrice }) {
                 <td style={{ padding: '9px 12px', color: '#475569', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                   {new Date().getFullYear() - coin.launched}y
                 </td>
-                <td style={{ padding: '9px 12px', color: '#475569', fontFamily: 'monospace', textAlign: 'center' }}>
-                  —
+                <td style={{ padding: '9px 12px', fontFamily: 'monospace', textAlign: 'center',
+                  color: commits?.[coin.id] === 0 || (commits?.[coin.id] != null && commits[coin.id] < 5)
+                    ? '#ef4444' : '#64748b' }}>
+                  {commits?.[coin.id] != null ? commits[coin.id] : '—'}
                 </td>
               </tr>
             );
@@ -1011,14 +1027,11 @@ export default function NextBTC() {
   const { data: priceData, loading, error, lastUpdated, refetch } = usePriceData();
   const fearGreed = useFearGreed();
   const commits   = useGitHubCommits();
+  const btcDomPct = useBTCDominance(); // ← Real global BTC dominance from CoinGecko
 
   const btcPrice = priceData?.bitcoin?.current_price;
 
-  // Calculate BTC dominance from loaded data
-  const totalMcap = Object.values(priceData).reduce((s, c) => s + (c.market_cap || 0), 0);
-  const btcDomPct = totalMcap && priceData?.bitcoin?.market_cap
-    ? ((priceData.bitcoin.market_cap / totalMcap) * 100).toFixed(1)
-    : null;
+  // BTC dominance now comes from useBTCDominance() — real total market cap
 
   // Sort coins by 13Q total, highest first
   const sortedCoins = [...COINS].sort(
@@ -1157,7 +1170,7 @@ export default function NextBTC() {
 
             {/* COMPARE VIEW */}
             {view === 'compare' && (
-              <CompareTable coins={sortedCoins} priceData={priceData} btcPrice={btcPrice} />
+              <CompareTable coins={sortedCoins} priceData={priceData} btcPrice={btcPrice} commits={commits} />
             )}
 
             {/* RESEARCH VIEW */}
