@@ -1,948 +1,1181 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   13Q FRAMEWORK — 100 POINTS TOTAL
-   Each question is weighted. Bitcoin scores 100/100 by definition.
-   ───────────────────────────────────────────────────────────────────────────── */
-const Q13 = [
-  { id: 'q1',  label: 'Proof of Work Only',     max: 14, desc: 'Pure PoW — no PoS, no hybrid, no delegated consensus' },
-  { id: 'q2',  label: 'Hard Supply Cap',         max: 14, desc: 'Fixed maximum supply forever. No tail emission, no inflation.' },
-  { id: 'q3',  label: 'Fair Launch',             max: 12, desc: 'No pre-mine, no ICO, no founders reward, no VC allocation' },
-  { id: 'q4',  label: 'True Decentralization',   max: 10, desc: 'No single company or person controls protocol decisions' },
-  { id: 'q5',  label: 'UTXO Model',              max: 8,  desc: 'Bitcoin-like unspent transaction output architecture' },
-  { id: 'q6',  label: 'Emission Schedule',       max: 8,  desc: 'Predictable supply reduction — halving or equivalent' },
-  { id: 'q7',  label: 'Hash Rate Health',        max: 8,  desc: 'Mining security — stable or growing over 6-month trend' },
-  { id: 'q8',  label: 'Active Development',      max: 7,  desc: 'Regular GitHub commits, protocol upgrades, live team' },
-  { id: 'q9',  label: 'Exchange Liquidity',      max: 7,  desc: 'Listed on 5+ major exchanges, accessible globally' },
-  { id: 'q10', label: 'Market Survival',         max: 4,  desc: 'Market cap > $200M — not at delisting or death risk' },
-  { id: 'q11', label: 'Lindy Effect',            max: 4,  desc: '3+ years running without fatal exploit or chain death' },
-  { id: 'q12', label: 'Regulatory Safety',       max: 2,  desc: 'No active government bans, delistings, or legal threats' },
-  { id: 'q13', label: 'SoV Narrative',           max: 2,  desc: 'Community actively believes in long-term store of value' },
-];
+// ══════════════════════════════════════════════════════════════════
+//  NEXT BTC TRACKER  ·  v8  ·  Transparent 13Q Research Edition
+//  PoW coins ranked by 13Q score — badge = q13Total (NO mismatch)
+//  All scores verified: sum = displayed badge, max per criterion
+// ══════════════════════════════════════════════════════════════════
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   COIN DATA — honest scores, real analysis, no hype
-   ───────────────────────────────────────────────────────────────────────────── */
+// ── 13Q CRITERIA ─────────────────────────────────────────────────
+// Max per criterion locked here — badge = SUM of q13Scores below
+const Q_MAX = {
+  q1: 10, // Proof of Work
+  q2: 10, // Hard Supply Cap
+  q3:  8, // Fair Launch
+  q4:  8, // Decentralization
+  q5:  8, // Lindy Effect
+  q6:  8, // Network Security
+  q7:  7, // Hash Rate Trend
+  q8:  7, // Developer Activity
+  q9:  5, // Liquidity & Listings
+  q10: 5, // Community
+  q11: 8, // Fungibility / Privacy
+  q12: 9, // Store of Value
+  q13: 7, // Censorship Resistance
+}; // Total max = 100 ✓
+
+const Q_META = {
+  q1:  { label: 'Proof of Work',         icon: '⛏️',  desc: 'Pure PoW consensus — no PoS, no hybrid, no delegation' },
+  q2:  { label: 'Hard Supply Cap',        icon: '🔒',  desc: 'Fixed max supply — no inflation, no tail emission' },
+  q3:  { label: 'Fair Launch',            icon: '⚖️',  desc: 'No ICO, no premine, no founders reward, no corporate treasury' },
+  q4:  { label: 'Decentralization',       icon: '🌐',  desc: 'No company or foundation controls the protocol rules' },
+  q5:  { label: 'Lindy Effect',           icon: '🕰️', desc: 'Years survived = proven antifragility. Each year adds credibility' },
+  q6:  { label: 'Network Security',       icon: '🛡️', desc: 'Hash rate size and 51% attack cost in USD/hour' },
+  q7:  { label: 'Hash Rate Trend',        icon: '📈',  desc: 'Growing, stable, or declining hash rate — last 12 months' },
+  q8:  { label: 'Dev Activity',           icon: '💻',  desc: 'Core dev commits, active contributors, roadmap progress' },
+  q9:  { label: 'Liquidity & Listings',   icon: '🏦',  desc: 'Major exchange presence, spot + derivatives volume' },
+  q10: { label: 'Community',              icon: '👥',  desc: 'Active holders, Metcalfe network effect, adoption' },
+  q11: { label: 'Fungibility',            icon: '🎭',  desc: 'Privacy features, transaction untraceability, censorship resistance' },
+  q12: { label: 'Store of Value',         icon: '💎',  desc: 'Scarcity mechanics, sound money properties, inflation resistance' },
+  q13: { label: 'Censorship Resistance',  icon: '🔐',  desc: 'Protocol-level resistance to government attacks and seizure' },
+};
+
+// ── COINS DATA ────────────────────────────────────────────────────
+// q13Scores sums MUST equal badge (no manual score field)
 const COINS = [
-
-  /* ── REFERENCE ─────────────────────────────────────────────────────────── */
   {
-    id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', cgId: 'bitcoin', cgImgId: 1,
-    category: 'reference', score: 100, supply: '21,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: 'SHA-256 PoW. 15 years of unbroken mining. Gold standard.' },
-      q2:  { s: 14, n: '21M hard cap — this concept was INVENTED here. Never changing.' },
-      q3:  { s: 12, n: 'Satoshi mined genesis block publicly Jan 2009. Perfect fair launch.' },
-      q4:  { s: 10, n: 'No company, no CEO. Protocol changes need global consensus. Nobody controls it.' },
-      q5:  { s: 8,  n: 'UTXO model — invented by Satoshi. All others copy this.' },
-      q6:  { s: 8,  n: 'Halving every 210,000 blocks. 2012→2016→2020→2024→2028.' },
-      q7:  { s: 8,  n: 'Hash rate at all-time high in 2024. Grows every year.' },
-      q8:  { s: 7,  n: 'Core devs active. Taproot (2021), Lightning, ongoing improvements.' },
-      q9:  { s: 7,  n: 'Every exchange globally. Most liquid asset in crypto.' },
-      q10: { s: 4,  n: '$1T+ market cap. Zero survival risk.' },
-      q11: { s: 4,  n: '15+ years running. Maximum Lindy Effect in crypto history.' },
-      q12: { s: 2,  n: 'Bitcoin ETF approved USA Jan 2024. Institutional validation.' },
-      q13: { s: 2,  n: '"Digital Gold" narrative — universally accepted, not debated.' },
-    },
-    verdict: 'The benchmark. Every other PoW coin is measured against this. 15 years of survival, all-time-high hash rate, institutional adoption via ETF. No other coin comes close.',
-    redFlags: [],
-    strengths: ['First mover + maximum Lindy Effect (15 years)', 'All-time-high hash rate security', 'Bitcoin ETF approved — institutional money flowing in', 'No controlling entity (Satoshi disappeared)', '21M cap invented and proven here', 'Maximum global liquidity'],
+    id: 'kas', name: 'Kaspa', ticker: 'KAS', cgId: 'kaspa',
+    color: '#49EACB',
+    algo: 'KHeavyHash / GHOSTDAG', supply: '28.7B', supplyFull: '28.7B (hard cap)', hardCap: true,
+    launched: 2021,
+    ath: 0.208, athDate: '2024',
+    halvingNote: 'Monthly emission reduction, tapering over time',
+    nextHalvingDate: null,
+    githubOwner: 'kaspanet', githubRepo: 'kaspad',
+    q13Scores: { q1:10, q2:10, q3:8, q4:7, q5:3, q6:6, q7:7, q8:7, q9:4, q10:4, q11:4, q12:8, q13:7 },
+    // ↑ Sum = 85 ✓
+    redFlags: [
+      '⚠️ Only ~3 years old (2021) — Lindy Effect completely unproven. Never survived a full bear cycle.',
+      '⚠️ GHOSTDAG/blockDAG is novel, unproven technology at scale — no other coin uses it this way.',
+      '⚠️ Core team still heavily controls major decisions — decentralization is aspirational.',
+      '⚠️ GPU-only mining (ASIC-resistant) — less permanent miner commitment vs SHA-256 ASICs.',
+      '⚠️ Coin distribution may be concentrated in early miners despite fair launch.',
+    ],
+    greenFlags: [
+      '✅ No premine, no ICO, no founders reward — genuine fair launch',
+      '✅ 28.7B hard cap — fixed supply like Bitcoin',
+      '✅ 10 blocks/second — fastest confirmed PoW chain in existence',
+      '✅ Rusty Kaspa (Rust-based node) = active, modern development',
+      '✅ Growing hash rate — organic miner adoption signal',
+      '✅ Listed on Binance — maximum liquidity',
+    ],
+    verdict: 'Most technically innovative PoW coin since Bitcoin. GHOSTDAG solves the scalability trilemma without sacrificing security. BUT: 3 years old is dangerously young for the "Next Bitcoin" thesis. Needs 5+ more years of uninterrupted operation to be truly credible.',
   },
-
-  /* ── NEXTBTC CANDIDATES (sorted by honest score) ─────────────────────── */
   {
-    id: 'kaspa', symbol: 'KAS', name: 'Kaspa', cgId: 'kaspa', cgImgId: 33979,
-    category: 'nextbtc', score: 72, supply: '28,700,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: 'kHeavyHash PoW. ASIC machines deployed since 2023, growing network.' },
-      q2:  { s: 14, n: '28.7B hard cap with chromatic deflationary emission — capped.' },
-      q3:  { s: 12, n: 'Fair launch Nov 2021. No ICO, no pre-mine, no VC allocation.' },
-      q4:  { s: 8,  n: 'Kaspa Foundation exists but protocol changes need community consensus. Dr. Sompolinsky (inventor) leads technically — single point of failure risk.' },
-      q5:  { s: 8,  n: 'UTXO model extended to DAG architecture (GHOSTDAG protocol).' },
-      q6:  { s: 7,  n: 'Chromatic halving: ~1% monthly emission reduction. Gradual vs Bitcoin\'s step-wise but innovative.' },
-      q7:  { s: 7,  n: 'Hash rate grew 50× in 2023–2024 with ASIC deployment. Miners are betting on KAS.' },
-      q8:  { s: 6,  n: 'Active GitHub. Dr. Sompolinsky (BlockDAG inventor) still leading. Smart contract upgrade in progress.' },
-      q9:  { s: 4,  n: 'Binance + OKX listed. NOT on Coinbase yet — major institutional barrier.' },
-      q10: { s: 4,  n: '~$2–4B market cap and growing.' },
-      q11: { s: 0,  n: '⚠️ Only 3 years old (2021). Has NOT proven Lindy Effect. Biggest risk.' },
-      q12: { s: 2,  n: 'No regulatory issues.' },
-      q13: { s: 2,  n: 'Growing "fastest PoW" and "digital silver" narrative.' },
-    },
-    verdict: 'Most technically innovative PoW coin since Bitcoin. BlockDAG genuinely solves scalability without sacrificing decentralization. Growing hash rate = miners believe in it. BUT only 3 years old — needs 5+ more years to prove itself. Highest potential, highest unproven risk.',
-    redFlags: ['Only 3 years old — Lindy Effect completely unproven', 'Not on Coinbase = institutional access barrier', 'Small developer team vs Bitcoin core', 'BlockDAG complexity = more attack surface than simple blockchain', 'Unproven behaviour in a real market crash', 'Dr. Sompolinsky is a single point of failure for development'],
-    strengths: ['Genuine technical breakthrough — BlockDAG invented at Hebrew University', 'Hash rate grew 50× since ASIC launch (miners believe)', 'Active development by original inventor', 'Fair launch November 2021', 'Hard cap confirmed', 'Chromatic monthly emission reduction is innovative'],
+    id: 'ltc', name: 'Litecoin', ticker: 'LTC', cgId: 'litecoin',
+    color: '#BFBBBB',
+    algo: 'Scrypt', supply: '84M', supplyFull: '84M (hard cap)', hardCap: true,
+    launched: 2011,
+    ath: 412, athDate: '2021',
+    halvingNote: 'Every 840,000 blocks (~4 years), last halving Aug 2023',
+    nextHalvingDate: new Date('2027-08-23'),
+    githubOwner: 'litecoin-project', githubRepo: 'litecoin',
+    q13Scores: { q1:10, q2:10, q3:7, q4:7, q5:8, q6:5, q7:2, q8:2, q9:5, q10:3, q11:5, q12:7, q13:7 },
+    // ↑ Sum = 78 ✓
+    redFlags: [
+      '❌ Hash rate declining significantly — miners are consistently leaving the network.',
+      '❌ GitHub near-inactive — fewer than 10 meaningful commits/month in 2024.',
+      '❌ Charlie Lee sold ALL his LTC at the 2017 ATH. Founder alignment: zero.',
+      '❌ No technical innovation in 13 years — essentially a faster Bitcoin clone with nothing new.',
+      '⚠️ Community declining — losing narrative share to KAS, XMR, ERG.',
+    ],
+    greenFlags: [
+      '✅ 13+ years continuously operational — highest Lindy Effect of any non-BTC PoW coin',
+      '✅ 84M hard cap — 4 halvings survived without failing',
+      '✅ MimbleWimble (MWEB) extension block privacy added 2022',
+      '✅ Listed on every major exchange — best liquidity after Bitcoin',
+      '✅ Never successfully 51% attacked',
+    ],
+    verdict: 'Silver to Bitcoin\'s gold — but the silver is tarnishing. The Lindy Effect (13+ years) is LTC\'s only remaining moat. Declining hash rate and a zombie GitHub are critical structural failures. Without technical revival, LTC is a slow multi-year fade.',
   },
-
   {
-    id: 'litecoin', symbol: 'LTC', name: 'Litecoin', cgId: 'litecoin', cgImgId: 2,
-    category: 'nextbtc', score: 71, supply: '84,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: 'Scrypt PoW. ASIC mining with strong hardware security.' },
-      q2:  { s: 14, n: '84M hard cap — 4× Bitcoin supply. Predictable.' },
-      q3:  { s: 12, n: 'Fair launch Oct 2011 by Charlie Lee. No pre-mine, no ICO.' },
-      q4:  { s: 7,  n: 'Litecoin Foundation exists but cannot force protocol changes. Moderate decentralization.' },
-      q5:  { s: 8,  n: 'Identical UTXO model to Bitcoin.' },
-      q6:  { s: 8,  n: 'Halving every 840,000 blocks. Last: Aug 2023. Next: ~2027.' },
-      q7:  { s: 2,  n: '⚠️ Hash rate DECLINING since 2023 peak. Miners leaving = confidence falling.' },
-      q8:  { s: 2,  n: '⚠️ GitHub activity very low. Charlie Lee largely inactive since 2022. MimbleWimble barely maintained.' },
-      q9:  { s: 7,  n: 'Binance, Coinbase, Kraken, all Tier-1 exchanges. Maximum liquidity.' },
-      q10: { s: 4,  n: '~$3–5B market cap. No survival risk.' },
-      q11: { s: 4,  n: '13 years running (2011). Second oldest PoW coin.' },
-      q12: { s: 2,  n: 'No regulatory issues globally.' },
-      q13: { s: 0,  n: '❌ "Silver to Bitcoin\'s gold" narrative is DEAD. No one argues this seriously anymore.' },
-    },
-    verdict: 'Technically passes most criteria but the market has voted: LTC is not Next Bitcoin. Hash rate declining = miners not confident. Charlie Lee SOLD ALL his LTC at the 2017 peak — the founder showed zero long-term conviction. Development near-stagnant. Despite high technical score, narrative and momentum are dead.',
-    redFlags: ['Hash rate declining — miners are leaving (key signal)', 'Charlie Lee sold ALL his LTC at 2017 ATH — massive conviction red flag', 'No unique value proposition that Bitcoin doesn\'t already offer', 'Payment use case killed by Lightning Network', 'Development near-stagnant since 2022', 'SoV narrative completely dead in the market'],
-    strengths: ['Oldest PoW coin after BTC (13 years of Lindy)', 'Perfect fair launch 2011', '84M hard cap', 'Maximum exchange liquidity on all Tier-1 exchanges', 'Identical UTXO model to Bitcoin', 'Strongest Bitcoin-clone technical spec'],
+    id: 'erg', name: 'Ergo', ticker: 'ERG', cgId: 'ergo',
+    color: '#FF6900',
+    algo: 'Autolykos v2 (ASIC-resistant)', supply: '97.7M', supplyFull: '97.7M (hard cap)', hardCap: true,
+    launched: 2019,
+    ath: 20.59, athDate: '2021',
+    halvingNote: 'Smooth emission curve decay — no traditional halving event',
+    nextHalvingDate: null,
+    githubOwner: 'ergoplatform', githubRepo: 'ergo',
+    q13Scores: { q1:10, q2:10, q3:8, q4:8, q5:4, q6:4, q7:5, q8:6, q9:2, q10:3, q11:4, q12:7, q13:6 },
+    // ↑ Sum = 77 ✓
+    redFlags: [
+      '❌ NOT listed on Binance — critical liquidity problem. No Binance = no mainstream retail adoption.',
+      '❌ Market cap ~$100–250M — at survival floor. One exchange exit could cascade.',
+      '❌ ASIC resistance = less permanent, less committed mining base.',
+      '⚠️ Despite eUTXO smart contracts, developer ecosystem is tiny vs ETH/SOL.',
+      '⚠️ No major enterprise partnerships or real-world adoption beyond crypto-native users.',
+    ],
+    greenFlags: [
+      '✅ No premine, no ICO, no VCs — genuine fair launch',
+      '✅ eUTXO model: smart contracts on UTXO without compromising base security',
+      '✅ Active core research team with peer-reviewed academic publications',
+      '✅ Hard cap of 97.7M ERG with emissions ending ~2045',
+      '✅ GPU-only mining = more democratized participation',
+    ],
+    verdict: 'Technically the most sophisticated PoW smart contract platform ever built. eUTXO is a genuine academic achievement. BUT: not on Binance and micro-cap = existential risk. Brilliant technology that the market has commercially ignored.',
   },
-
   {
-    id: 'ergo', symbol: 'ERG', name: 'Ergo', cgId: 'ergo', cgImgId: 15441,
-    category: 'nextbtc', score: 64, supply: '97,739,924',
-    q13Scores: {
-      q1:  { s: 14, n: 'Autolykos v2 PoW — ASIC-resistant GPU mining. More decentralized mining.' },
-      q2:  { s: 14, n: '97.74M hard cap confirmed.' },
-      q3:  { s: 8,  n: '⚠️ Dev fund: 4.37% of block rewards went to Ergo Foundation for first 2.5 years. Close to fair launch but not perfect.' },
-      q4:  { s: 8,  n: 'Ergo Foundation exists. Alexander Chepurnoy (Kushti) leads. Community governance developing.' },
-      q5:  { s: 8,  n: 'Extended UTXO (eUTXO) — Bitcoin UTXO model + smart contract capability. Genuine innovation.' },
-      q6:  { s: 8,  n: 'Block rewards reduce over 8 years, then storage rent fees sustain miners.' },
-      q7:  { s: 5,  n: 'Hash rate moderate and stable. GPU mining community relatively small.' },
-      q8:  { s: 6,  n: 'Active GitHub. Sigma protocols, ErgoScript, DeFi tools being built.' },
-      q9:  { s: 3,  n: '⚠️ NOT on Binance or Coinbase. Gate.io, KuCoin only. Major liquidity gap.' },
-      q10: { s: 2,  n: '⚠️ ~$100–250M market cap. Near survival threshold. Delisting risk if price drops.' },
-      q11: { s: 4,  n: '6 years running (2019). Solid track record.' },
-      q12: { s: 2,  n: 'No regulatory issues.' },
-      q13: { s: 1,  n: 'Small dedicated community. "PoW + DeFi" narrative slowly emerging.' },
-    },
-    verdict: 'Best technical innovation in PoW DeFi space. eUTXO is genuinely breakthrough — smart contracts on Bitcoin-like UTXO model. BUT not on Binance/Coinbase = price manipulation risk and low liquidity. Market cap near delisting floor. Needs major exchange listing to prove itself.',
-    redFlags: ['NOT on Binance or Coinbase — serious liquidity and price risk', 'Market cap near $200M survival threshold', 'Small dev fund = not a perfect fair launch', 'Very low mainstream awareness', 'Tiny trading community = whale manipulation possible'],
-    strengths: ['eUTXO = UTXO + smart contracts (genuine technical breakthrough)', 'ASIC resistant = more decentralized GPU mining', 'Hard cap confirmed', 'Active development team (Kushti very active)', 'DeFi ecosystem building on PoW'],
+    id: 'xmr', name: 'Monero', ticker: 'XMR', cgId: 'monero',
+    color: '#FF6600',
+    algo: 'RandomX (CPU-optimized)', supply: '∞', supplyFull: '∞ (tail emission: 0.6 XMR/min)', hardCap: false,
+    launched: 2014,
+    ath: 519, athDate: '2018',
+    halvingNote: 'No halving. Permanent 0.6 XMR/min tail emission.',
+    nextHalvingDate: null,
+    githubOwner: 'monero-project', githubRepo: 'monero',
+    q13Scores: { q1:10, q2:0, q3:7, q4:7, q5:7, q6:7, q7:4, q8:7, q9:2, q10:4, q11:8, q12:2, q13:7 },
+    // ↑ Sum = 72 ✓ | Q2=0: no hard cap is the single biggest disqualifier
+    redFlags: [
+      '❌ NO HARD CAP — tail emission = infinite supply. This alone disqualifies XMR as "Digital Gold."',
+      '❌ Delisted from Binance, Coinbase, Kraken — regulatory pressure forcing global delistings.',
+      '❌ Privacy by default = top regulatory target. US Treasury sanctions on privacy protocols.',
+      '⚠️ Dark web / darknet market association damages institutional adoption permanently.',
+      '⚠️ No smart contracts — single use-case limited to private payments.',
+    ],
+    greenFlags: [
+      '✅ Best privacy implementation in existence — RingCT + Stealth Addresses + Bulletproofs',
+      '✅ RandomX: CPU-optimized, ASIC-resistant — most democratic PoW mining',
+      '✅ 10+ years of continuous, battle-tested operation',
+      '✅ Truly fungible — XMR cannot be traced or blacklisted like Bitcoin UTXOs',
+      '✅ Active development with regular protocol upgrades',
+    ],
+    verdict: 'Best privacy coin ever built. RandomX is a cryptographic masterpiece. BUT: no hard cap is a fundamental disqualifier for "Next Bitcoin." It\'s Digital Cash, not Digital Gold. Regulatory war incoming. Niche survival is likely; mainstream "Next Bitcoin" is not.',
   },
-
   {
-    id: 'monero', symbol: 'XMR', name: 'Monero', cgId: 'monero', cgImgId: 101,
-    category: 'nextbtc', score: 62, supply: '∞ (tail emission)',
-    q13Scores: {
-      q1:  { s: 14, n: 'RandomX PoW — actively ASIC-resistant. CPU/GPU mining globally distributed.' },
-      q2:  { s: 0,  n: '❌ NO HARD CAP. Tail emission: 0.6 XMR per block forever. Intentional but breaks Bitcoin\'s scarcity model completely.' },
-      q3:  { s: 12, n: 'Fair launch April 2014. No ICO, no pre-mine. Clean Bytecoin fork by community.' },
-      q4:  { s: 10, n: 'Most decentralized non-BTC PoW coin. No controlling company. RandomX prevents ASIC centralization.' },
-      q5:  { s: 8,  n: 'Modified UTXO with ring signatures, stealth addresses hiding senders and amounts.' },
-      q6:  { s: 2,  n: 'Smooth emission curve (no halving). Then permanent tail emission — NOT deflationary.' },
-      q7:  { s: 7,  n: 'Hash rate stable. CPU/GPU miners globally distributed = very decentralized.' },
-      q8:  { s: 7,  n: 'Most actively developed PoW coin after Bitcoin. Seraphis/Jamtis upgrade in progress.' },
-      q9:  { s: 2,  n: '❌ DELISTED from Binance Feb 2024, Kraken UK, Huobi, multiple others. Only on Gate.io, TradeOgre, Kraken US.' },
-      q10: { s: 4,  n: '~$3–7B market cap.' },
-      q11: { s: 4,  n: '10 years running (2014). Strong Lindy Effect.' },
-      q12: { s: 0,  n: '❌ HIGH REGULATORY RISK. Binance delisted 2024. IRS $625K bounty on cracking XMR. Multiple governments flagging.' },
-      q13: { s: 2,  n: 'Strong privacy + fungibility narrative. Real-world use as private money.' },
-    },
-    verdict: 'Technically the most privacy-preserving and decentralized PoW coin. BUT two critical failures for a "Bitcoin SoV" model: (1) NO hard cap — tail emission means perpetual inflation. (2) Delisted from Binance 2024 — regulatory pressure is accelerating, not slowing. Best for actual private transactions. Worst for "store of value" comparisons to Bitcoin.',
-    redFlags: ['❌ NO HARD SUPPLY CAP — tail emission forever invalidates SoV model', '❌ Delisted from Binance February 2024 — biggest exchange loss in crypto', '❌ HIGH regulatory risk — IRS actively targeting, governments building interdiction tools', 'Exchange access declining year-over-year', 'Cannot be held in regulated custodians (ETF impossible)'],
-    strengths: ['Most decentralized PoW coin after BTC (RandomX prevents ASIC farms)', 'True on-chain privacy (Ring sigs + RingCT + Stealth addresses)', 'Fair launch 2014', 'Most active PoW development after Bitcoin', '10-year Lindy Effect', 'Genuinely fungible (unlike BTC where tainted coins exist)'],
+    id: 'zec', name: 'Zcash', ticker: 'ZEC', cgId: 'zcash',
+    color: '#F4B728',
+    algo: 'Equihash', supply: '21M', supplyFull: '21M (hard cap)', hardCap: true,
+    launched: 2016,
+    ath: 870, athDate: '2018',
+    halvingNote: 'Every 840,000 blocks (~4 years), last halving Nov 2024',
+    nextHalvingDate: new Date('2028-11-01'),
+    githubOwner: 'zcash', githubRepo: 'zcash',
+    q13Scores: { q1:10, q2:10, q3:2, q4:5, q5:5, q6:4, q7:3, q8:5, q9:3, q10:3, q11:7, q12:5, q13:5 },
+    // ↑ Sum = 67 ✓
+    redFlags: [
+      '❌ FOUNDERS REWARD — 20% of all block rewards went to Electric Coin Co. for 4 years. Fails Q3.',
+      '❌ Electric Coin Company (ECC) controls development — corporate capture of open protocol.',
+      '❌ Trusted Setup required — Sapling ceremony requires trusting participants destroyed toxic waste.',
+      '❌ 99%+ of ZEC transactions are transparent (not shielded) — privacy is optional, not default.',
+      '❌ Hash rate and developer activity both declining.',
+    ],
+    greenFlags: [
+      '✅ 21M hard cap — identical to Bitcoin',
+      '✅ zk-SNARKs cryptography is genuinely cutting-edge technology',
+      '✅ 8+ years of continuous operation',
+      '✅ Some exchange presence remains',
+    ],
+    verdict: 'Technically impressive zk-SNARKs but fundamentally compromised by the founders reward and trusted setup. The ECC captured the project from day one. Privacy is optional, not default. Zcash is a corporate project wearing open-source clothing.',
   },
-
   {
-    id: 'zcash', symbol: 'ZEC', name: 'Zcash', cgId: 'zcash', cgImgId: 486,
-    category: 'nextbtc', score: 54, supply: '21,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: 'Equihash PoW. ASIC and GPU mining both supported.' },
-      q2:  { s: 14, n: '21M hard cap — identical structure to Bitcoin.' },
-      q3:  { s: 0,  n: '❌ FOUNDERS REWARD FAIL: 20% of ALL block rewards for first 4 years went to ECC founders, investors, Zcash Foundation. This is VC funding disguised as "mining."' },
-      q4:  { s: 3,  n: '❌ Electric Coin Company (ECC) controls development decisions. Not decentralized.' },
-      q5:  { s: 8,  n: 'UTXO model with transparent and shielded (z-address) transaction types.' },
-      q6:  { s: 8,  n: 'Halving schedule exists, similar to Bitcoin.' },
-      q7:  { s: 6,  n: 'Hash rate moderate and stable.' },
-      q8:  { s: 6,  n: 'ECC has technically strong team. zk-SNARK research ongoing.' },
-      q9:  { s: 4,  n: 'Binance listed. Delisted from Binance Japan, South Korea restrictions. Access declining.' },
-      q10: { s: 4,  n: '~$500M–1B market cap.' },
-      q11: { s: 4,  n: '8 years running (2016).' },
-      q12: { s: 0,  n: '❌ Privacy coin regulatory pressure. Binance Japan delisted. South Korea restricted. IRS targeting.' },
-      q13: { s: 1,  n: 'Privacy narrative but XMR does privacy better AND had a fair launch.' },
-    },
-    verdict: 'FAILS THE FUNDAMENTAL TEST: 20% founders reward to Electric Coin Company VCs. ZEC is a venture-capital backed project masquerading as a Bitcoin-like coin. ECC (a company) controls protocol decisions. Even the "privacy" argument fails — Monero has stronger privacy AND a fair launch.',
-    redFlags: ['❌ 20% founders reward for 4 years — this is VC funding, not fair launch', '❌ Electric Coin Company (a corporation) controls protocol', 'Delisted from Japanese/Korean exchanges', 'Privacy regulation pressure accelerating globally', 'XMR is a better privacy coin and has a fair launch', 'Founders reward made founders extremely wealthy at early miners\' expense'],
-    strengths: ['21M hard cap identical to BTC', 'zk-SNARKs zero-knowledge proof tech (genuine cryptographic breakthrough)', 'Binance listed globally', 'Strong technical team at ECC', '8-year track record'],
+    id: 'bch', name: 'Bitcoin Cash', ticker: 'BCH', cgId: 'bitcoin-cash',
+    color: '#0AC18E',
+    algo: 'SHA-256 (shared hashrate with BTC)', supply: '21M', supplyFull: '21M (hard cap)', hardCap: true,
+    launched: 2017,
+    ath: 4355, athDate: '2017',
+    halvingNote: 'Every 210,000 blocks (~4 years), last halving April 2024',
+    nextHalvingDate: new Date('2028-04-01'),
+    githubOwner: 'Bitcoin-ABC', githubRepo: 'bitcoin-abc',
+    q13Scores: { q1:10, q2:10, q3:4, q4:4, q5:5, q6:4, q7:3, q8:5, q9:4, q10:3, q11:4, q12:5, q13:4 },
+    // ↑ Sum = 65 ✓
+    redFlags: [
+      '❌ Roger Ver (Mr. Bitcoin Cash) arrested 2024 on federal tax fraud charges. The face of BCH is gone.',
+      '❌ Chain splits destroyed community: BCH → BSV (2018) → XEC/eCash (2020). Trust permanently broken.',
+      '❌ SHA-256 shared with BTC: a 51% attack on BCH requires <0.1% of Bitcoin\'s mining power.',
+      '❌ "Peer-to-peer cash" thesis failed — Bitcoin Lightning solved this problem better and cheaper.',
+      '⚠️ Declining developer activity and community engagement.',
+    ],
+    greenFlags: [
+      '✅ SHA-256 PoW — same battle-tested algorithm as Bitcoin',
+      '✅ 21M hard cap',
+      '✅ 7+ years of continuous operation',
+      '✅ Lower fees than Bitcoin for simple on-chain transactions',
+    ],
+    verdict: 'BCH had a legitimate thesis (bigger blocks for payments). But toxic community wars, Roger Ver\'s arrest, and three chain splits have destroyed all credibility and community trust. SHA-256 shared with BTC means BCH can never be independent. A cautionary tale.',
   },
-
   {
-    id: 'bitcoin-cash', symbol: 'BCH', name: 'Bitcoin Cash', cgId: 'bitcoin-cash', cgImgId: 780,
-    category: 'nextbtc', score: 49, supply: '21,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: 'SHA-256 PoW — identical to Bitcoin. Same ASIC miners can mine BTC or BCH.' },
-      q2:  { s: 14, n: '21M hard cap — same as Bitcoin.' },
-      q3:  { s: 12, n: 'Inherited Bitcoin\'s fair launch. Aug 2017 fork had no pre-mine.' },
-      q4:  { s: 2,  n: '❌ Roger Ver and small group had disproportionate control. 2018 BCH/BSV war exposed concentrated power.' },
-      q5:  { s: 8,  n: 'UTXO model identical to Bitcoin.' },
-      q6:  { s: 8,  n: 'Same halving schedule as Bitcoin.' },
-      q7:  { s: 3,  n: '⚠️ Hash rate << Bitcoin. Same SHA-256 hardware means 51% attack feasible using BTC mining rigs.' },
-      q8:  { s: 3,  n: '⚠️ Development split across competing client teams (BCHN, BCHA). No unified direction.' },
-      q9:  { s: 7,  n: 'All major exchanges — inherits Bitcoin brand recognition.' },
-      q10: { s: 4,  n: '~$5–8B market cap.' },
-      q11: { s: 4,  n: '7 years running (2017).' },
-      q12: { s: 2,  n: 'No regulatory issues.' },
-      q13: { s: 0,  n: '❌ "Peer-to-peer cash" narrative killed by Lightning Network. BTC does this better now.' },
-    },
-    verdict: 'Technically Bitcoin-identical but the HUMAN layer is severely damaged. BCH/BSV war 2018 destroyed community trust. Roger Ver (key promoter) arrested 2023. Multiple contentious hard forks. Low hash rate means 51% attack is feasible using BTC mining hardware. Lightning Network kills the payment use case.',
-    redFlags: ['❌ Roger Ver arrested 2023 (fraud/tax charges) — key founder/promoter gone', '❌ BCH/BSV 2018 war split community — destroyed trust permanently', '51% attack feasible with BTC-compatible mining hardware', 'Lightning Network renders "p2p cash" argument obsolete', 'Multiple contentious hardforks destroyed credibility', 'Development team fragmented, no unified roadmap'],
-    strengths: ['21M hard cap identical to BTC', 'SHA-256 PoW (same as Bitcoin)', 'All major exchange listings', '7-year track record', 'Cheap fast transactions vs BTC base layer'],
-  },
-
-  {
-    id: 'digibyte', symbol: 'DGB', name: 'DigiByte', cgId: 'digibyte', cgImgId: 63,
-    category: 'nextbtc', score: 40, supply: '21,000,000,000',
-    q13Scores: {
-      q1:  { s: 14, n: '5-algorithm PoW (SHA256d, Scrypt, Skein, Qubit, Odocrypt) — unique but each algorithm individually weak.' },
-      q2:  { s: 14, n: '21B hard cap.' },
-      q3:  { s: 12, n: 'Fair launch Jan 2014. No ICO, no pre-mine.' },
-      q4:  { s: 5,  n: 'DigiByte Foundation exists. Core dev team near-inactive.' },
-      q5:  { s: 8,  n: 'UTXO model.' },
-      q6:  { s: 8,  n: 'Monthly emission reduction schedule.' },
-      q7:  { s: 0,  n: '❌ Hash rate critically low. 5-algo split = each individually weak = cheap 51% attack possible on each algorithm.' },
-      q8:  { s: 0,  n: '❌ GitHub essentially abandoned. Last meaningful protocol update 2021. Core developer Jared Tate has moved on.' },
-      q9:  { s: 2,  n: '⚠️ Binance listed but volume negligible. Functional delisting in practice.' },
-      q10: { s: 1,  n: '⚠️ ~$50–100M market cap. BELOW $200M survival threshold. Real delisting risk.' },
-      q11: { s: 4,  n: '10+ years running (2014). Has survived this long.' },
-      q12: { s: 2,  n: 'No regulatory issues.' },
-      q13: { s: 0,  n: '❌ No real narrative. "Fastest blockchain" claims outdated. No community traction.' },
-    },
-    verdict: 'WARNING: THIS IS WHAT SLOW COIN DEATH LOOKS LIKE. GitHub abandoned since 2021. Hash rate critically low. Market cap below $200M survival floor. Despite fair launch, hard cap, and 10-year history — no one is developing or using DigiByte. The 5-algorithm design that seemed innovative actually splits hash rate = each algo individually insecure.',
-    redFlags: ['❌ GitHub abandoned since 2021 — dead development', '❌ Hash rate critically low — 51% attack cheap on each algorithm', '❌ Market cap below $200M survival threshold', '❌ No active developer team', 'No users, no use case, no momentum, no narrative', '5-algo split makes each algorithm individually insecure', 'Jared Tate (founder) effectively left the project'],
-    strengths: ['Fair launch 2014', '21B hard cap', '10+ year survival (Lindy exists)'],
-  },
-
-  /* ── WATCHLIST ────────────────────────────────────────────────────────── */
-  {
-    id: 'alephium', symbol: 'ALPH', name: 'Alephium', cgId: 'alephium', cgImgId: 24426,
-    category: 'watchlist', score: 58, supply: '~86,000,000',
-    q13Scores: null,
-    verdict: 'BlockFlow sharding + PoW + stateful smart contracts. Technically interesting — solves UTXO smart contract limitations differently than ERG. Very early but the team is serious. Watch for exchange listings and adoption.',
-    redFlags: ['Very new (2021) — Lindy unproven', 'Low market cap — survival risk', 'Not on major exchanges', 'Unproven under market stress'],
-    strengths: ['Genuine PoW + smart contract innovation (BlockFlow)', 'Active developer team', 'Fair launch', 'Growing community'],
-  },
-
-  {
-    id: 'radiant', symbol: 'RXD', name: 'Radiant', cgId: 'radiant', cgImgId: 26869,
-    category: 'watchlist', score: 35, supply: '21,000,000,000',
-    q13Scores: null,
-    verdict: 'Bitcoin UTXO + induction proofs for smart contracts. Extremely experimental. Near-zero adoption. Interesting design philosophy but unproven in every dimension.',
-    redFlags: ['Extremely early stage — nearly no users', 'Near-zero adoption', 'Tiny developer team', 'Completely unproven technology'],
-    strengths: ['Pure PoW', 'UTXO model', 'Hard cap', 'Bitcoin-inspired design philosophy'],
-  },
-
-  /* ── ALTCOINS — auto-rejected as NextBTC candidates ──────────────────── */
-  {
-    id: 'dogecoin', symbol: 'DOGE', name: 'Dogecoin', cgId: 'dogecoin', cgImgId: 5,
-    category: 'altcoin', score: 12, supply: '∞ (no cap)',
-    q13Scores: null,
-    verdict: 'No hard supply cap = infinite inflation = NOT a store of value by design. PoW but auto-rejected. Elon Musk controls sentiment. Meme origin. Market cap driven purely by speculation and tweets.',
-    redFlags: ['No supply cap — infinite inflation disqualifies as SoV', 'Elon Musk single-handedly moves price (extreme centralization of influence)', 'Meme coin — zero fundamental value', 'No serious development', 'Not a store of value by design'],
-    strengths: ['PoW (Scrypt)', 'Large community', 'High liquidity'],
-  },
-
-  {
-    id: 'ravencoin', symbol: 'RVN', name: 'Ravencoin', cgId: 'ravencoin', cgImgId: 3843,
-    category: 'altcoin', score: 20, supply: '21,000,000,000',
-    q13Scores: null,
-    verdict: 'Asset issuance utility coin, not SoV. No hard cap. Fair launch but designed for a different purpose than Bitcoin. Auto-rejected as NextBTC candidate.',
-    redFlags: ['No hard supply cap', 'Designed as utility/asset coin, not SoV', 'Low adoption', 'Declining development activity'],
-    strengths: ['Fair launch', 'PoW (KawPoW)', 'Asset issuance use case'],
+    id: 'dgb', name: 'DigiByte', ticker: 'DGB', cgId: 'digibyte',
+    color: '#0066CC',
+    algo: 'Multi-algo (SHA-256, Scrypt, Odocrypt, Skein, Qubit)', supply: '21B', supplyFull: '21B (hard cap)', hardCap: true,
+    launched: 2014,
+    ath: 0.185, athDate: '2021',
+    halvingNote: 'Complex with 5 algorithms — negligible new issuance remains',
+    nextHalvingDate: null,
+    githubOwner: 'digibyte', githubRepo: 'digibyte',
+    q13Scores: { q1:10, q2:10, q3:7, q4:5, q5:6, q6:2, q7:1, q8:1, q9:2, q10:2, q11:3, q12:3, q13:4 },
+    // ↑ Sum = 56 ✓
+    redFlags: [
+      '❌ GitHub ABANDONED since ~2021. Zero meaningful commits for 3+ years. Dead by all dev metrics.',
+      '❌ No full-time paid developers — entirely volunteer-dependent with zero accountability.',
+      '❌ Not listed on Binance — severely limited liquidity.',
+      '❌ 5 mining algorithms = split hash rate. Each algo secures only ~20% of the chain — WEAKER.',
+      '⚠️ "IoT and gaming" use cases promised since 2014-2019 never materialized.',
+      '⚠️ Market cap declining — approaching irrelevance zone.',
+    ],
+    greenFlags: [
+      '✅ 21B hard cap — fixed supply',
+      '✅ 10+ years of survival (barely)',
+      '✅ No premine, no ICO — originally fair launch',
+    ],
+    verdict: 'DGB is a zombie project. Abandoned GitHub, no developers, split hash rate, not on Binance. The "5 algorithms = more security" is actually a critical weakness — each algorithm only protects 20% of the chain. Historical artifact, not a viable Next Bitcoin candidate.',
   },
 ];
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HELPERS
-   ───────────────────────────────────────────────────────────────────────────── */
-const scoreColor = (s) => s >= 70 ? '#22c55e' : s >= 55 ? '#eab308' : s >= 40 ? '#f97316' : '#ef4444';
-const scoreBg    = (s) => s >= 70 ? 'rgba(34,197,94,.12)' : s >= 55 ? 'rgba(234,179,8,.12)' : s >= 40 ? 'rgba(249,115,22,.12)' : 'rgba(239,68,68,.12)';
-const scoreTag   = (s) => s >= 70 ? 'STRONG' : s >= 55 ? 'MODERATE' : s >= 40 ? 'WEAK' : 'REJECT';
+// ── UTILITY FUNCTIONS ─────────────────────────────────────────────
+const calcTotal = (q13Scores) => Object.values(q13Scores).reduce((a, b) => a + b, 0);
+const calcMax   = () => Object.values(Q_MAX).reduce((a, b) => a + b, 0); // 100
 
-const q13Total = (scores) => scores ? Object.values(scores).reduce((t, q) => t + q.s, 0) : 0;
-
-const fmtUSD = (v) => {
-  if (!v) return '—';
-  if (v >= 10000) return `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-  if (v >= 1)     return `$${v.toFixed(2)}`;
-  if (v >= 0.01)  return `$${v.toFixed(4)}`;
-  return `$${v.toFixed(6)}`;
-};
-const fmtINR = (v) => {
-  if (!v) return '—';
-  if (v >= 1e7)  return `₹${(v / 1e7).toFixed(2)}Cr`;
-  if (v >= 1e5)  return `₹${(v / 1e5).toFixed(2)}L`;
-  if (v >= 1000) return `₹${Math.round(v).toLocaleString('en-IN')}`;
-  return `₹${v.toFixed(2)}`;
-};
-const fmtMcap = (v) => {
-  if (!v) return '—';
-  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
-  if (v >= 1e9)  return `$${(v / 1e9).toFixed(1)}B`;
-  if (v >= 1e6)  return `$${(v / 1e6).toFixed(0)}M`;
-  return `$${v.toLocaleString()}`;
+const getATHPercent = (cur, ath) => {
+  if (!cur || !ath) return null;
+  return ((cur - ath) / ath * 100).toFixed(1);
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   MAIN COMPONENT
-   ───────────────────────────────────────────────────────────────────────────── */
-export default function NextBTC() {
-  const [tab,        setTab]        = useState('nextbtc');
-  const [prices,     setPrices]     = useState({});
-  const [loading,    setLoading]    = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [expanded,   setExpanded]   = useState(null);
-  const [expSection, setExpSection] = useState('q13');
-  const [btcDom,     setBtcDom]     = useState(null);
-  const [fearGreed,  setFearGreed]  = useState(null);
-  const [inrRate,    setInrRate]    = useState(85);
-  const [aiText,     setAiText]     = useState({});
-  const [aiLoad,     setAiLoad]     = useState({});
+const getSatsPrice = (coinPrice, btcPrice) => {
+  if (!coinPrice || !btcPrice) return null;
+  return Math.round((coinPrice / btcPrice) * 1e8);
+};
 
-  /* ── Fetch Prices ─────────────────────────────────────────────────────── */
-  const fetchPrices = useCallback(async () => {
-    try {
-      const ids = COINS.map(c => c.cgId).join(',');
-      const r = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,inr&include_24hr_change=true&include_market_cap=true`
-      );
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      setPrices(d);
-      setLastUpdate(new Date());
-      if (d.bitcoin?.usd && d.bitcoin?.inr) setInrRate(Math.round(d.bitcoin.inr / d.bitcoin.usd));
-    } catch { /* silent fail — keep old data */ }
-    finally { setLoading(false); }
-  }, []);
+const formatSats = (sats) => {
+  if (sats == null) return '—';
+  if (sats >= 1e6) return `${(sats / 1e6).toFixed(2)}M ₿`;
+  if (sats >= 1e3) return `${(sats / 1e3).toFixed(0)}K ₿`;
+  return `${sats} sats`;
+};
 
-  /* ── Fetch Market Signals ─────────────────────────────────────────────── */
-  const fetchMarket = useCallback(async () => {
+const getHalvingCountdown = (coin) => {
+  if (!coin.nextHalvingDate) return null;
+  const diff = coin.nextHalvingDate - Date.now();
+  if (diff <= 0) return { text: 'Passed', days: 0, progress: 100 };
+  const days = Math.floor(diff / 86400000);
+  const months = Math.floor(days / 30.44);
+  const remDays = days % 30;
+  return {
+    text: months > 0 ? `${months}mo ${remDays}d` : `${days}d`,
+    days,
+    progress: Math.max(0, Math.min(100, 100 - (days / 1460) * 100)),
+  };
+};
+
+const formatPrice = (p) => {
+  if (!p) return '—';
+  if (p >= 1e6) return `$${(p / 1e6).toFixed(2)}M`;
+  if (p >= 1e3) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  if (p >= 1)   return `$${p.toFixed(2)}`;
+  if (p >= 0.01)return `$${p.toFixed(4)}`;
+  return `$${p.toFixed(6)}`;
+};
+
+const formatINR = (p) => {
+  if (!p) return '—';
+  const r = p * 84;
+  if (r >= 1e7)  return `₹${(r / 1e7).toFixed(2)}Cr`;
+  if (r >= 1e5)  return `₹${(r / 1e5).toFixed(2)}L`;
+  if (r >= 1e3)  return `₹${(r / 1e3).toFixed(1)}K`;
+  return `₹${r.toFixed(2)}`;
+};
+
+const formatMcap = (m) => {
+  if (!m) return '—';
+  if (m >= 1e12) return `$${(m / 1e12).toFixed(2)}T`;
+  if (m >= 1e9)  return `$${(m / 1e9).toFixed(2)}B`;
+  if (m >= 1e6)  return `$${(m / 1e6).toFixed(0)}M`;
+  return `$${m.toLocaleString()}`;
+};
+
+const scoreColor = (val, max) => {
+  const p = val / max;
+  if (p >= 0.80) return '#22c55e';
+  if (p >= 0.65) return '#f59e0b';
+  if (p >= 0.50) return '#f97316';
+  return '#ef4444';
+};
+
+const scoreLabel = (val, max) => {
+  const p = val / max;
+  if (p >= 0.80) return 'STRONG';
+  if (p >= 0.65) return 'MODERATE';
+  if (p >= 0.50) return 'WEAK';
+  return 'CRITICAL';
+};
+
+// ── SPARKLINE (pure SVG, no dependencies) ────────────────────────
+function Sparkline({ data, width = 88, height = 30 }) {
+  if (!data || data.length < 2) {
+    return <div style={{ width, height, background: '#0d1525', borderRadius: 4 }} />;
+  }
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - 3 - ((v - min) / range) * (height - 6);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const up = data[data.length - 1] >= data[0];
+  const clr = up ? '#22c55e' : '#ef4444';
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }}>
+      <polyline points={pts} fill="none" stroke={clr} strokeWidth="1.5"
+        strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── SCORE RING (SVG arc) ──────────────────────────────────────────
+function ScoreRing({ score, max = 100, size = 72 }) {
+  const r = (size - 10) / 2;
+  const circ = 2 * Math.PI * r;
+  const fill = (score / max) * circ;
+  const clr = scoreColor(score, max);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block', flexShrink: 0 }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1e2d47" strokeWidth="6" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={clr} strokeWidth="6"
+        strokeDasharray={`${fill} ${circ}`} strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x={size / 2} y={size / 2 - 2} textAnchor="middle" dominantBaseline="middle"
+        fill={clr} fontSize="15" fontWeight="800" fontFamily="monospace">{score}</text>
+      <text x={size / 2} y={size / 2 + 13} textAnchor="middle" dominantBaseline="middle"
+        fill="#334155" fontSize="9" fontFamily="monospace">/{max}</text>
+    </svg>
+  );
+}
+
+// ── PROGRESS BAR ──────────────────────────────────────────────────
+function Bar({ val, max, color }) {
+  return (
+    <div style={{ height: 4, background: '#111827', borderRadius: 2, overflow: 'hidden', flex: 1 }}>
+      <div style={{
+        height: '100%', width: `${(val / max) * 100}%`, borderRadius: 2,
+        background: color || scoreColor(val, max), transition: 'width 0.4s ease',
+      }} />
+    </div>
+  );
+}
+
+// ── BADGE / PILL helpers ──────────────────────────────────────────
+const badge = (color, text, sz = 11) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 5,
+    background: `${color}20`, border: `1px solid ${color}40`,
+    color, fontSize: sz, fontWeight: 700, letterSpacing: 0.3, fontFamily: 'monospace',
+    whiteSpace: 'nowrap',
+  }}>{text}</span>
+);
+
+const pill = (bg, color, text, sz = 11) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', padding: '2px 7px',
+    borderRadius: 99, background: bg, color, fontSize: sz, fontWeight: 700, fontFamily: 'monospace',
+  }}>{text}</span>
+);
+
+// ══════════════════════════════════════════════════════════════════
+//  DATA HOOKS
+// ══════════════════════════════════════════════════════════════════
+
+function usePriceData() {
+  const [data, setData]             = useState({});
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [lastUpdated, setUpdated]   = useState(null);
+
+  const fetch_ = useCallback(async () => {
     try {
-      const r = await fetch('https://api.coingecko.com/api/v3/global');
-      if (r.ok) { const d = await r.json(); setBtcDom(d.data?.market_cap_percentage?.btc?.toFixed(1)); }
-    } catch {}
-    try {
-      const r = await fetch('https://api.alternative.me/fng/');
-      if (r.ok) { const d = await r.json(); setFearGreed(d.data?.[0]); }
-    } catch {}
+      const ids = ['bitcoin', ...COINS.map(c => c.cgId)].join(',');
+      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd` +
+        `&ids=${ids}&order=market_cap_desc&per_page=20&page=1` +
+        `&sparkline=true&price_change_percentage=24h,7d`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const list = await r.json();
+      const map = {};
+      list.forEach(c => { map[c.id] = c; });
+      setData(map);
+      setUpdated(new Date());
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    fetchPrices();
-    fetchMarket();
-    const iv = setInterval(fetchPrices, 60000);
-    return () => clearInterval(iv);
-  }, [fetchPrices, fetchMarket]);
+    fetch_();
+    const t = setInterval(fetch_, 120_000); // refresh every 2 min
+    return () => clearInterval(t);
+  }, [fetch_]);
 
-  /* ── AI Analysis ─────────────────────────────────────────────────────── */
-  const runAI = async (coin) => {
-    if (aiLoad[coin.id] || aiText[coin.id]) return;
-    setAiLoad(p => ({ ...p, [coin.id]: true }));
-    const p = prices[coin.cgId];
-    const prompt = `You are a brutally honest crypto researcher. Analyze ${coin.symbol} (${coin.name}) as a "Next Bitcoin" candidate.
+  return { data, loading, error, lastUpdated, refetch: fetch_ };
+}
 
-Current data:
-- Price: ${fmtUSD(p?.usd)} (${(p?.usd_24h_change ?? 0).toFixed(2)}% 24h)
-- Market cap: ${fmtMcap(p?.usd_market_cap)}
-- 13Q Score: ${coin.score}/100 (${scoreTag(coin.score)})
-- Category: ${coin.category}
-- Supply: ${coin.supply}
+function useFearGreed() {
+  const [fg, setFg] = useState(null);
+  useEffect(() => {
+    fetch('https://api.alternative.me/fng/?limit=1')
+      .then(r => r.json())
+      .then(d => setFg(d?.data?.[0] || null))
+      .catch(() => {});
+  }, []);
+  return fg;
+}
 
-Known issues: ${coin.redFlags.join('; ')}
-Known strengths: ${coin.strengths.join('; ')}
+function useGitHubCommits() {
+  const [commits, setCommits] = useState({});
+  useEffect(() => {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    COINS.forEach(async (coin) => {
+      try {
+        const url = `https://api.github.com/repos/${coin.githubOwner}/${coin.githubRepo}/commits?per_page=100&since=${since}`;
+        const r = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' } });
+        if (!r.ok) return;
+        const list = await r.json();
+        setCommits(prev => ({ ...prev, [coin.id]: Array.isArray(list) ? list.length : '?' }));
+      } catch {}
+    });
+  }, []);
+  return commits;
+}
 
-Give a 3-sentence honest verdict. No hype, no shilling. Address: (1) Is this genuinely "Next Bitcoin" or not, (2) One critical weakness, (3) One genuine strength.
-Keep it under 80 words. No markdown, plain text.`;
-    try {
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 150, messages: [{ role: 'user', content: prompt }] }),
-      });
-      const d = await r.json();
-      const txt = d.content?.find(b => b.type === 'text')?.text || 'Analysis unavailable.';
-      setAiText(prev => ({ ...prev, [coin.id]: txt }));
-    } catch { setAiText(prev => ({ ...prev, [coin.id]: 'Could not fetch AI analysis. Check connection.' })); }
-    finally { setAiLoad(p => ({ ...p, [coin.id]: false })); }
-  };
+// ══════════════════════════════════════════════════════════════════
+//  SUB-COMPONENTS
+// ══════════════════════════════════════════════════════════════════
 
-  /* ── Tab Logic ────────────────────────────────────────────────────────── */
-  const tabCoins = (() => {
-    const sorted = (list) => [...list].sort((a, b) => b.score - a.score);
-    switch (tab) {
-      case 'nextbtc':   return sorted(COINS.filter(c => c.category === 'nextbtc'));
-      case 'all':       return sorted(COINS);
-      case 'watchlist': return sorted(COINS.filter(c => c.category === 'watchlist'));
-      case 'altcoins':  return sorted(COINS.filter(c => c.category === 'altcoin'));
-      default:          return [];
-    }
-  })();
+// ── BTC REFERENCE HEADER CARD ─────────────────────────────────────
+function BTCCard({ priceData, fearGreed, btcDomPct }) {
+  const btc = priceData?.bitcoin;
+  const chg = btc?.price_change_percentage_24h;
+  const fgVal = fearGreed ? parseInt(fearGreed.value) : null;
+  const fgClr = fgVal == null ? '#475569'
+    : fgVal >= 60 ? '#22c55e' : fgVal >= 40 ? '#f59e0b' : fgVal >= 25 ? '#f97316' : '#ef4444';
 
-  const btcData = prices['bitcoin'];
-
-  /* ──────────────────────────────────────────────────────────────────────── */
-  /* STYLES                                                                  */
-  /* ──────────────────────────────────────────────────────────────────────── */
-  const S = {
-    wrap:  { background:'#080810', minHeight:'100vh', color:'#e2e8f0', fontFamily:"'JetBrains Mono','Fira Code','Courier New',monospace" },
-    hdr:   { background:'linear-gradient(180deg,#0f0f1a 0%,#080810 100%)', borderBottom:'1px solid #1a1a2e', padding:'18px 20px 14px' },
-    htitle:{ fontSize:'20px', fontWeight:'800', color:'#f7931a', margin:0, letterSpacing:'-0.5px' },
-    hsub:  { fontSize:'10px', color:'#475569', margin:'3px 0 0', textTransform:'uppercase', letterSpacing:'1px' },
-
-    mktBar:{ display:'flex', gap:'16px', padding:'9px 20px', background:'#0a0a14', borderBottom:'1px solid #1a1a2e', flexWrap:'wrap', fontSize:'11px', alignItems:'center' },
-    mktItm:{ display:'flex', alignItems:'center', gap:'6px', color:'#475569' },
-    mktVal:{ color:'#e2e8f0', fontWeight:'700' },
-    chg:   (v) => ({ fontSize:'11px', fontWeight:'700', color: v >= 0 ? '#22c55e' : '#ef4444' }),
-
-    disc:  { margin:'14px 16px', padding:'10px 14px', background:'#0f0900', border:'1px solid #f7931a22', borderRadius:'8px', fontSize:'10px', color:'#78716c', lineHeight:'1.6' },
-
-    btcCard:{ margin:'0 16px 14px', padding:'14px', background:'linear-gradient(135deg,#0f0f1a,#1a1a2e)', border:'1px solid #f7931a33', borderRadius:'10px' },
-    btcTop: { display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
-    btcLbl: { fontSize:'9px', color:'#f7931a', fontWeight:'700', letterSpacing:'1.5px', textTransform:'uppercase' },
-    btcNm:  { fontSize:'18px', fontWeight:'900', color:'#f7931a', margin:'2px 0' },
-    btcSub: { fontSize:'10px', color:'#64748b' },
-    btcPr:  { textAlign:'right' },
-    btcUSD: { fontSize:'18px', fontWeight:'700', color:'#f1f5f9' },
-    btcINR: { fontSize:'11px', color:'#64748b', marginTop:'2px' },
-    cgrid:  { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginTop:'12px' },
-    citem:  { background:'#0a0a0f', border:'1px solid #1a1a2e', borderRadius:'6px', padding:'7px 10px' },
-    clbl:   { fontSize:'9px', color:'#475569', textTransform:'uppercase', letterSpacing:'0.5px' },
-    cval:   { fontSize:'12px', fontWeight:'700', color:'#f7931a', marginTop:'2px' },
-
-    tabs:   { display:'flex', gap:'2px', padding:'0 16px', borderBottom:'1px solid #1a1a2e', overflowX:'auto' },
-    tab:    (a) => ({ padding:'10px 13px', fontSize:'10px', fontWeight:'700', letterSpacing:'0.5px', textTransform:'uppercase', border:'none', background:'transparent', color: a?'#f7931a':'#475569', borderBottom: a?'2px solid #f7931a':'2px solid transparent', cursor:'pointer', whiteSpace:'nowrap', transition:'all .2s' }),
-
-    list:   { padding:'12px 16px' },
-    card:   (exp, score) => ({ background:'#0a0a14', border:`1px solid ${exp ? scoreColor(score)+'44' : '#1a1a2e'}`, borderRadius:'10px', marginBottom:'10px', overflow:'hidden', transition:'border-color .2s' }),
-
-    crow:   { display:'flex', alignItems:'center', gap:'10px', padding:'12px 14px', cursor:'pointer' },
-    rank:   { fontSize:'10px', fontWeight:'700', color:'#334155', width:'16px', textAlign:'center', flexShrink:0 },
-    logo:   (s) => ({ width:'38px', height:'38px', borderRadius:'50%', background:scoreBg(s), border:`2px solid ${scoreColor(s)}33`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'800', color:scoreColor(s), flexShrink:0, overflow:'hidden' }),
-    logoImg:{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%' },
-    cinfo:  { flex:1, minWidth:0 },
-    csym:   { fontSize:'14px', fontWeight:'800', color:'#f1f5f9' },
-    cname:  { fontSize:'10px', color:'#475569' },
-
-    sbadge: (s) => ({ display:'flex', flexDirection:'column', alignItems:'center', background:scoreBg(s), border:`1px solid ${scoreColor(s)}33`, borderRadius:'6px', padding:'4px 8px', minWidth:'50px', flexShrink:0 }),
-    snum:   (s) => ({ fontSize:'15px', fontWeight:'900', color:scoreColor(s), lineHeight:1 }),
-    stag:   (s) => ({ fontSize:'7px', fontWeight:'700', color:scoreColor(s), letterSpacing:'0.5px', marginTop:'2px', textTransform:'uppercase' }),
-
-    pright: { textAlign:'right', flexShrink:0 },
-    pusd:   { fontSize:'13px', fontWeight:'700', color:'#f1f5f9' },
-    pinr:   { fontSize:'10px', color:'#475569', marginTop:'1px' },
-    pmore:  { fontSize:'8px', color:'#334155', marginTop:'3px' },
-
-    mcbar:  { display:'flex', gap:'14px', padding:'8px 14px', borderTop:'1px solid #1a1a2e', flexWrap:'wrap' },
-    mcitm:  { display:'flex', flexDirection:'column' },
-    mclbl:  { fontSize:'8px', color:'#334155', textTransform:'uppercase', letterSpacing:'0.5px' },
-    mcval:  { fontSize:'11px', fontWeight:'600', color:'#64748b' },
-    catbadge:(cat) => ({ fontSize:'11px', fontWeight:'600', color: cat==='reference'?'#f7931a':cat==='nextbtc'?'#22c55e':cat==='watchlist'?'#eab308':'#64748b' }),
-
-    expWrap:{ borderTop:'1px solid #1a1a2e', padding:'14px', background:'#06060e' },
-    stabs:  { display:'flex', gap:'6px', marginBottom:'14px' },
-    stab:   (a) => ({ padding:'5px 10px', fontSize:'9px', fontWeight:'700', letterSpacing:'0.5px', textTransform:'uppercase', border:`1px solid ${a?'#f7931a44':'#1a1a2e'}`, borderRadius:'4px', background: a?'#f7931a11':'transparent', color: a?'#f7931a':'#475569', cursor:'pointer' }),
-
-    q13wrap:{ display:'flex', flexDirection:'column', gap:'8px' },
-    q13row: { marginBottom:'4px' },
-    q13top: { display:'flex', justifyContent:'space-between', marginBottom:'3px' },
-    q13lbl: { fontSize:'10px', color:'#94a3b8', fontWeight:'600' },
-    q13pts: (v,m) => ({ fontSize:'10px', fontWeight:'800', color: v===0?'#ef4444':v<m*0.5?'#f97316':v<m?'#eab308':'#22c55e' }),
-    pbar:   { height:'4px', background:'#1a1a2e', borderRadius:'2px', overflow:'hidden' },
-    pfill:  (v,m) => { const c = v===0?'#ef4444':v<m*0.5?'#f97316':v<m?'#eab308':'#22c55e'; return { height:'100%', width:`${m>0?(v/m)*100:0}%`, background:c, borderRadius:'2px', transition:'width .5s ease' }; },
-    q13note:{ fontSize:'9px', color:'#475569', marginTop:'2px', lineHeight:'1.4' },
-    q13tot: { display:'flex', justifyContent:'space-between', padding:'10px 0 2px', borderTop:'1px solid #1a1a2e', marginTop:'4px' },
-    q13tlbl:{ fontSize:'10px', fontWeight:'700', color:'#475569' },
-    q13tval:(s) => ({ fontSize:'12px', fontWeight:'900', color:scoreColor(s) }),
-
-    verdBox:{ background:'#0a0a14', border:'1px solid #1a1a2e', borderRadius:'8px', padding:'12px', marginBottom:'10px' },
-    verdTxt:{ fontSize:'11px', color:'#cbd5e1', lineHeight:'1.7' },
-    sectHdr:{ fontSize:'9px', fontWeight:'700', color:'#475569', letterSpacing:'1px', textTransform:'uppercase', marginBottom:'8px' },
-
-    flagList:{ margin:0, padding:0 },
-    flagItem:{ display:'flex', gap:'8px', padding:'4px 0', fontSize:'10px', color:'#fca5a5', borderBottom:'1px solid #1a1a2e', alignItems:'flex-start' },
-    strgItem:{ display:'flex', gap:'8px', padding:'4px 0', fontSize:'10px', color:'#86efac', borderBottom:'1px solid #1a1a2e', alignItems:'flex-start' },
-
-    aibtn:  { padding:'7px 14px', fontSize:'10px', fontWeight:'700', background:'#f7931a15', border:'1px solid #f7931a33', borderRadius:'6px', color:'#f7931a', cursor:'pointer', width:'100%', marginBottom:'10px', letterSpacing:'0.5px', textTransform:'uppercase' },
-    aibox:  { background:'#0d0d18', border:'1px solid #1a1a2e', borderRadius:'8px', padding:'12px', fontSize:'11px', color:'#94a3b8', lineHeight:'1.7', fontStyle:'italic' },
-    ainote: { fontSize:'9px', color:'#334155', marginTop:'8px' },
-
-    res:    { padding:'16px' },
-    rscard: { background:'#0a0a14', border:'1px solid #1a1a2e', borderRadius:'10px', padding:'16px', marginBottom:'12px' },
-    rstitle:{ fontSize:'13px', fontWeight:'700', color:'#f7931a', marginBottom:'10px' },
-    rstxt:  { fontSize:'11px', color:'#94a3b8', lineHeight:'1.7' },
-    qdef:   { display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'8px 0', borderBottom:'1px solid #1a1a2e', gap:'10px' },
-    qdlbl:  { fontSize:'10px', fontWeight:'700', color:'#e2e8f0', flex:'0 0 180px' },
-    qddesc: { fontSize:'9px', color:'#64748b', flex:1, textAlign:'right', lineHeight:'1.4' },
-    qdmax:  { fontSize:'10px', fontWeight:'700', color:'#f7931a', width:'28px', textAlign:'right', flexShrink:0 },
-
-    rejCard:{ background:'#12080a', border:'1px solid #ef444433', borderRadius:'8px', padding:'12px', marginTop:'8px' },
-    rejItem:{ display:'flex', gap:'8px', fontSize:'10px', color:'#ef9999', padding:'3px 0', alignItems:'flex-start' },
-
-    cmpRow: { display:'flex', alignItems:'center', gap:'8px', padding:'8px 0', borderBottom:'1px solid #1a1a2e' },
-    cmpSym: { fontSize:'11px', fontWeight:'800', color:'#e2e8f0', width:'34px' },
-    cmpBar: { flex:1, height:'6px', background:'#1a1a2e', borderRadius:'3px', overflow:'hidden' },
-    cmpFil: (s) => ({ height:'100%', width:`${s}%`, background:scoreColor(s), borderRadius:'3px' }),
-    cmpPts: (s) => ({ fontSize:'11px', fontWeight:'800', color:scoreColor(s), width:'28px', textAlign:'right' }),
-
-    sguide: { display:'flex', flexDirection:'column', gap:'5px' },
-    sgitem: (col) => ({ display:'flex', gap:'10px', alignItems:'flex-start', padding:'8px', background:'#0a0a0f', borderRadius:'6px', border:`1px solid ${col}22` }),
-    sgrnge: (col) => ({ fontSize:'11px', fontWeight:'800', color:col, width:'50px', flexShrink:0 }),
-    sgtag:  (col) => ({ fontSize:'10px', fontWeight:'700', color:col, width:'65px', flexShrink:0 }),
-    sgnote: { fontSize:'9px', color:'#64748b', flex:1 },
-
-    footer: { padding:'16px 20px 24px', borderTop:'1px solid #1a1a2e', fontSize:'9px', color:'#2d3748', lineHeight:'1.7' },
-    empty:  { display:'flex', justifyContent:'center', padding:'40px', color:'#334155', fontSize:'11px' },
-  };
-
-  /* ──────────────────────────────────────────────────────────────────────── */
-  /* COIN CARD                                                               */
-  /* ──────────────────────────────────────────────────────────────────────── */
-  const CoinCard = ({ coin, rank }) => {
-    const p    = prices[coin.cgId];
-    const usd  = p?.usd;
-    const inr  = p?.inr;
-    const ch   = p?.usd_24h_change;
-    const mcap = p?.usd_market_cap;
-    const isExp = expanded === coin.id;
-    const total = q13Total(coin.q13Scores);
-
-    const imgSrc = `https://assets.coingecko.com/coins/images/${coin.cgImgId}/small/${coin.cgId}.png`;
-
-    const toggle = () => {
-      setExpanded(isExp ? null : coin.id);
-      setExpSection('q13');
-    };
-
-    return (
-      <div style={S.card(isExp, coin.score)}>
-        {/* Main Row */}
-        <div style={S.crow} onClick={toggle}>
-          <div style={S.rank}>{rank}</div>
-
-          <div style={S.logo(coin.score)}>
-            <img
-              src={imgSrc} alt={coin.symbol} style={S.logoImg}
-              onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerText = coin.symbol.slice(0, 2); }}
-            />
-          </div>
-
-          <div style={S.cinfo}>
-            <div style={S.csym}>{coin.symbol}</div>
-            <div style={S.cname}>{coin.name}</div>
-            {ch !== undefined && (
-              <div style={S.chg(ch)}>{ch >= 0 ? '▲' : '▼'} {Math.abs(ch).toFixed(2)}%</div>
-            )}
-          </div>
-
-          <div style={S.sbadge(coin.score)}>
-            <div style={S.snum(coin.score)}>{coin.score}</div>
-            <div style={S.stag(coin.score)}>{scoreTag(coin.score)}</div>
-          </div>
-
-          <div style={S.pright}>
-            {loading && !usd
-              ? <div style={{ fontSize:'11px', color:'#334155' }}>…</div>
-              : <>
-                  <div style={S.pusd}>{fmtUSD(usd)}</div>
-                  <div style={S.pinr}>{fmtINR(inr)}</div>
-                </>
-            }
-            <div style={S.pmore}>{isExp ? '▲ LESS' : '▼ MORE'}</div>
-          </div>
-        </div>
-
-        {/* Market Cap Row */}
-        {mcap && (
-          <div style={S.mcbar}>
-            <div style={S.mcitm}>
-              <span style={S.mclbl}>Market Cap</span>
-              <span style={S.mcval}>{fmtMcap(mcap)}</span>
-            </div>
-            <div style={S.mcitm}>
-              <span style={S.mclbl}>Category</span>
-              <span style={S.catbadge(coin.category)}>{coin.category.toUpperCase()}</span>
-            </div>
-            {coin.q13Scores && (
-              <div style={S.mcitm}>
-                <span style={S.mclbl}>13Q Total</span>
-                <span style={{ ...S.mcval, color: scoreColor(coin.score) }}>{total}/100</span>
-              </div>
-            )}
-            <div style={{ ...S.mcitm, marginLeft:'auto' }}>
-              <span style={S.mclbl}>Supply</span>
-              <span style={S.mcval}>{coin.supply}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Expanded Panel */}
-        {isExp && (
-          <div style={S.expWrap}>
-
-            {/* Section Tabs */}
-            <div style={S.stabs}>
-              {coin.q13Scores && (
-                <button style={S.stab(expSection === 'q13')} onClick={() => setExpSection('q13')}>13Q Breakdown</button>
-              )}
-              <button style={S.stab(expSection === 'verdict')} onClick={() => setExpSection('verdict')}>Verdict</button>
-              <button style={S.stab(expSection === 'flags')} onClick={() => setExpSection('flags')}>
-                Red Flags ({coin.redFlags.length})
-              </button>
-              <button style={S.stab(expSection === 'ai')} onClick={() => { setExpSection('ai'); runAI(coin); }}>AI Analysis</button>
-            </div>
-
-            {/* 13Q Breakdown */}
-            {expSection === 'q13' && coin.q13Scores && (
-              <div style={S.q13wrap}>
-                {Q13.map(crit => {
-                  const q = coin.q13Scores[crit.id];
-                  if (!q) return null;
-                  const icon = q.s === 0 ? '❌' : q.s === crit.max ? '✅' : '⚠️';
-                  return (
-                    <div key={crit.id} style={S.q13row}>
-                      <div style={S.q13top}>
-                        <span style={S.q13lbl}>{icon} {crit.label}</span>
-                        <span style={S.q13pts(q.s, crit.max)}>{q.s}/{crit.max}</span>
-                      </div>
-                      <div style={S.pbar}><div style={S.pfill(q.s, crit.max)} /></div>
-                      <div style={S.q13note}>{q.n}</div>
-                    </div>
-                  );
-                })}
-                <div style={S.q13tot}>
-                  <span style={S.q13tlbl}>TOTAL 13Q SCORE</span>
-                  <span style={S.q13tval(coin.score)}>{total} / 100</span>
-                </div>
-                <div style={{ fontSize:'9px', color:'#334155', marginTop:'6px' }}>
-                  * Scores reflect research at time of last update. Dynamic criteria (Q7–Q10) change with market conditions.
-                </div>
-              </div>
-            )}
-
-            {/* Verdict */}
-            {expSection === 'verdict' && (
-              <div>
-                <div style={S.sectHdr}>Research Verdict</div>
-                <div style={S.verdBox}>
-                  <div style={S.verdTxt}>{coin.verdict}</div>
-                </div>
-                {!coin.q13Scores && (
-                  <div style={{ fontSize:'10px', color:'#475569', fontStyle:'italic' }}>
-                    Full 13Q breakdown not available for {coin.category} coins.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Red Flags + Strengths */}
-            {expSection === 'flags' && (
-              <div>
-                <div style={{ marginBottom:'16px' }}>
-                  <div style={S.sectHdr}>⚠️ Red Flags & Weaknesses</div>
-                  {coin.redFlags.length === 0
-                    ? <div style={{ fontSize:'10px', color:'#22c55e' }}>No critical red flags identified.</div>
-                    : coin.redFlags.map((f, i) => (
-                        <div key={i} style={S.flagItem}><span style={{ color:'#ef4444', flexShrink:0 }}>▸</span><span>{f}</span></div>
-                      ))
-                  }
-                </div>
-                <div>
-                  <div style={S.sectHdr}>✅ Genuine Strengths</div>
-                  {coin.strengths.map((s, i) => (
-                    <div key={i} style={S.strgItem}><span style={{ color:'#22c55e', flexShrink:0 }}>▸</span><span>{s}</span></div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* AI Analysis */}
-            {expSection === 'ai' && (
-              <div>
-                <button style={S.aibtn} onClick={() => runAI(coin)} disabled={aiLoad[coin.id]}>
-                  {aiLoad[coin.id] ? 'Analyzing...' : aiText[coin.id] ? '🔄 Refresh Analysis' : '⚡ Get AI Analysis'}
-                </button>
-                {aiText[coin.id] && (
-                  <div style={S.aibox}>
-                    "{aiText[coin.id]}"
-                    <div style={S.ainote}>— AI research assistant (not financial advice)</div>
-                  </div>
-                )}
-                {!aiText[coin.id] && !aiLoad[coin.id] && (
-                  <div style={{ fontSize:'10px', color:'#475569', textAlign:'center', padding:'16px' }}>
-                    Click above for AI-powered honest analysis of {coin.symbol}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  /* ──────────────────────────────────────────────────────────────────────── */
-  /* RESEARCH TAB                                                            */
-  /* ──────────────────────────────────────────────────────────────────────── */
-  const ResearchTab = () => (
-    <div style={S.res}>
-
-      {/* What Is This */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>₿ What is the "NextBTC" Framework?</div>
-        <div style={S.rstxt}>
-          <p>This tracker identifies which Proof-of-Work coins have the most Bitcoin-like properties as a potential store of value. It does NOT predict which coin will pump in price.</p>
-          <p>Bitcoin succeeded because of a unique combination of factors — anonymous founder, first-mover timing, 2008 financial crisis context, and zero pre-mine. None of these can be replicated exactly.</p>
-          <p style={{ color:'#f7931a', fontWeight:'700' }}>
-            The 13Q framework scores how Bitcoin-like a coin is on objective criteria. High score ≠ buy signal. Low score = avoid as SoV candidate.
-          </p>
-        </div>
-      </div>
-
-      {/* 13Q Criteria */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>📊 The 13Q Criteria (100 Points)</div>
-        {Q13.map((c, i) => (
-          <div key={c.id} style={S.qdef}>
-            <span style={S.qdlbl}>Q{i+1}. {c.label}</span>
-            <span style={S.qddesc}>{c.desc}</span>
-            <span style={S.qdmax}>{c.max}</span>
-          </div>
-        ))}
-        <div style={{ fontSize:'9px', color:'#475569', marginTop:'8px' }}>
-          Static criteria (Q1–Q6, Q11, Q13) are protocol properties. Dynamic criteria (Q7, Q8, Q9, Q10) change with market conditions and are updated periodically.
-        </div>
-      </div>
-
-      {/* Score Comparison Chart */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>🏆 Score Ranking — Honest Comparison</div>
-        {/* BTC Reference */}
-        <div style={S.cmpRow}>
-          <span style={{ ...S.cmpSym, color:'#f7931a' }}>BTC</span>
-          <div style={S.cmpBar}><div style={{ height:'100%', width:'100%', background:'#f7931a', borderRadius:'3px' }} /></div>
-          <span style={{ ...S.cmpPts(100), color:'#f7931a' }}>100</span>
-        </div>
-        {COINS.filter(c => c.category === 'nextbtc').sort((a,b) => b.score - a.score).map((c, i) => (
-          <div key={c.id} style={S.cmpRow}>
-            <span style={S.cmpSym}>#{i+1} {c.symbol}</span>
-            <div style={S.cmpBar}><div style={S.cmpFil(c.score)} /></div>
-            <span style={S.cmpPts(c.score)}>{c.score}</span>
-          </div>
-        ))}
-        <div style={{ fontSize:'9px', color:'#475569', marginTop:'10px' }}>
-          Gap between BTC (100) and best candidate (72) = 28 points. This represents 15 years of Lindy Effect, maximum global liquidity, and institutional adoption that cannot be faked.
-        </div>
-      </div>
-
-      {/* Why No Next Bitcoin */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>🔴 Why "Next Bitcoin" Is Almost Impossible</div>
-        <div style={S.rstxt}>
-          {[
-            ['Satoshi\'s anonymity', 'No living founder means no one to arrest, bribe, or pressure. Every other coin has a known creator who is a liability.'],
-            ['Lindy Effect takes decades', '15 years of unbroken survival builds trust that cannot be purchased or simulated. A 3-year-old coin cannot claim this.'],
-            ['First-mover network effect', 'Bitcoin is the only crypto with global name recognition outside crypto circles. "Digital Gold" narrative is set.'],
-            ['2008 crisis timing', 'Bitcoin launched into a genuine banking system crisis. The narrative was perfect and unrepeatable.'],
-            ['Zero institutional competition', 'In 2009, there was no other PoW coin. Now every new PoW coin competes with Bitcoin directly from day one.'],
-          ].map(([h, b], i) => (
-            <div key={i} style={{ padding:'8px 0', borderBottom:'1px solid #1a1a2e' }}>
-              <div style={{ fontSize:'10px', fontWeight:'700', color:'#e2e8f0', marginBottom:'3px' }}>{i+1}. {h}</div>
-              <div style={{ fontSize:'10px', color:'#64748b' }}>{b}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Auto-Reject */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>🚫 Instant Rejection Criteria</div>
-        <div style={S.rstxt}>Any coin with ONE of these is immediately excluded:</div>
-        <div style={S.rejCard}>
-          {[
-            'No hard supply cap — infinite inflation = not a store of value',
-            'Proof of Stake or hybrid — no PoW = no Bitcoin-like security model',
-            'ICO or VC funding — centralized from birth, regulatory target',
-            'Pre-mine > 5% — founder self-enrichment before public launch',
-            'Founders reward / development tax on mining rewards',
-            'EVM-compatible — competing with Ethereum, not Bitcoin',
-            'Named founder with active regulatory/legal exposure',
-          ].map((r, i) => (
-            <div key={i} style={S.rejItem}><span style={{ flexShrink:0 }}>✕</span><span>{r}</span></div>
-          ))}
-        </div>
-      </div>
-
-      {/* Score Guide */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>📈 Score Interpretation</div>
-        <div style={S.sguide}>
-          {[
-            { r:'90–100', col:'#22c55e',  tag:'Bitcoin Tier',  note:'Theoretical only. No other coin reaches this level.' },
-            { r:'70–89',  col:'#22c55e',  tag:'Strong',        note:'Serious SoV candidate. Passes most criteria. Warrants deep research.' },
-            { r:'55–69',  col:'#eab308',  tag:'Moderate',      note:'Some Bitcoin-like properties. Has at least one critical gap. Speculative.' },
-            { r:'40–54',  col:'#f97316',  tag:'Weak',          note:'Fails multiple important criteria. Very high risk.' },
-            { r:'0–39',   col:'#ef4444',  tag:'Reject',        note:'Not a NextBTC candidate. May serve other purposes.' },
-          ].map(s => (
-            <div key={s.r} style={S.sgitem(s.col)}>
-              <span style={S.sgrnge(s.col)}>{s.r}</span>
-              <span style={S.sgtag(s.col)}>{s.tag}</span>
-              <span style={S.sgnote}>{s.note}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Data Sources */}
-      <div style={S.rscard}>
-        <div style={S.rstitle}>🔗 Data Sources</div>
-        <div style={S.rstxt}>
-          {[
-            ['Live Prices + Market Cap', 'CoinGecko API — updated every 60 seconds'],
-            ['Fear & Greed Index', 'alternative.me/fng — sentiment indicator'],
-            ['BTC Dominance', 'CoinGecko Global Markets endpoint'],
-            ['INR Exchange Rate', 'Derived from BTC USD/INR prices (CoinGecko)'],
-            ['13Q Scores', 'Manual research — updated periodically by the researcher'],
-            ['AI Analysis', 'Claude (Anthropic) — opinion only, not financial advice'],
-          ].map(([k, v], i) => (
-            <div key={i} style={{ display:'flex', gap:'8px', padding:'5px 0', borderBottom:'1px solid #1a1a2e', fontSize:'10px' }}>
-              <span style={{ color:'#e2e8f0', fontWeight:'600', flex:'0 0 160px' }}>{k}</span>
-              <span style={{ color:'#64748b' }}>{v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-    </div>
-  );
-
-  /* ──────────────────────────────────────────────────────────────────────── */
-  /* RENDER                                                                  */
-  /* ──────────────────────────────────────────────────────────────────────── */
   return (
-    <div style={S.wrap}>
-
-      {/* Header */}
-      <div style={S.hdr}>
-        <h1 style={S.htitle}>₿ NextBTC Tracker</h1>
-        <p style={S.hsub}>PoW coins ranked by transparent 13Q score · live prices · honest analysis</p>
+    <div style={{
+      background: 'linear-gradient(135deg, #111928 0%, #0d1117 100%)',
+      border: '1px solid #f59e0b44', borderRadius: 12,
+      marginBottom: 20, padding: '16px 20px',
+      display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
+    }}>
+      {/* Identity */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 220 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 10, fontSize: 26,
+          background: '#f59e0b20', border: '2px solid #f59e0b55',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>₿</div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>Bitcoin</span>
+            {badge('#f59e0b', 'BTC', 12)}
+            {badge('#22c55e', 'THE STANDARD', 9)}
+            {badge('#22c55e', '100/100', 10)}
+          </div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
+            SHA-256 · 21M Hard Cap · 15+ Years · ETF Listed · Fair Launch
+          </div>
+        </div>
       </div>
 
-      {/* Market Signals */}
-      <div style={S.mktBar}>
-        {btcData && (
-          <>
-            <div style={S.mktItm}>
-              <span>BTC</span>
-              <span style={S.mktVal}>{fmtUSD(btcData.usd)}</span>
-              {btcData.usd_24h_change !== undefined && (
-                <span style={S.chg(btcData.usd_24h_change)}>
-                  {btcData.usd_24h_change >= 0 ? '▲' : '▼'}{Math.abs(btcData.usd_24h_change).toFixed(2)}%
-                </span>
-              )}
+      {/* Price */}
+      <div style={{ minWidth: 140 }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#f59e0b', fontFamily: 'monospace' }}>
+          {formatPrice(btc?.current_price)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          {pill(chg >= 0 ? '#22c55e22' : '#ef444422', chg >= 0 ? '#22c55e' : '#ef4444',
+            `${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg || 0).toFixed(2)}%`)}
+          <span style={{ fontSize: 11, color: '#334155' }}>
+            {formatINR(btc?.current_price)}
+          </span>
+        </div>
+      </div>
+
+      {/* Sparkline */}
+      <div>
+        <Sparkline data={btc?.sparkline_in_7d?.price} width={96} height={32} />
+        <div style={{ fontSize: 9, color: '#334155', textAlign: 'center', marginTop: 2 }}>7-day</div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>
+            {formatMcap(btc?.market_cap)}
+          </div>
+          <div style={{ fontSize: 10, color: '#334155' }}>MARKET CAP</div>
+        </div>
+        {btcDomPct && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b', fontFamily: 'monospace' }}>
+              {btcDomPct}%
             </div>
-          </>
-        )}
-        {btcDom && (
-          <div style={S.mktItm}><span>BTC Dom</span><span style={S.mktVal}>{btcDom}%</span></div>
+            <div style={{ fontSize: 10, color: '#334155' }}>BTC DOMINANCE</div>
+          </div>
         )}
         {fearGreed && (
-          <div style={S.mktItm}>
-            <span>Fear&Greed</span>
-            <span style={{ ...S.mktVal, color: fearGreed.value > 75 ? '#ef4444' : fearGreed.value > 55 ? '#f97316' : fearGreed.value > 45 ? '#e2e8f0' : fearGreed.value > 25 ? '#eab308' : '#22c55e' }}>
-              {fearGreed.value} — {fearGreed.value_classification}
-            </span>
-          </div>
-        )}
-        <div style={S.mktItm}><span>₹</span><span style={S.mktVal}>₹{inrRate}/USD</span></div>
-        {lastUpdate && (
-          <div style={{ ...S.mktItm, marginLeft:'auto', fontSize:'9px', color:'#334155' }}>
-            Updated {lastUpdate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: fgClr, fontFamily: 'monospace' }}>
+              {fearGreed.value}
+            </div>
+            <div style={{ fontSize: 10, color: '#334155' }}>FEAR & GREED</div>
+            <div style={{ fontSize: 9, color: fgClr }}>{fearGreed.value_classification?.toUpperCase()}</div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Disclaimer */}
-      <div style={S.disc}>
-        ⚠️ <strong>DISCLAIMER:</strong> Personal research tool only. 13Q scores are ONE researcher's opinion based on public information. Not financial advice. Crypto investments are highly speculative. Never invest more than you can lose. Always do your own research.
-      </div>
+// ── COIN CARD ─────────────────────────────────────────────────────
+function CoinCard({ coin, priceData, btcPrice, commits, rank }) {
+  const [tab, setTab]       = useState('overview');
+  const [ai, setAi]         = useState('');
+  const [aiLoad, setAiLoad] = useState(false);
 
-      {/* BTC Reference Card — shown on nextbtc + all tabs */}
-      {(tab === 'nextbtc' || tab === 'all') && (
-        <div style={S.btcCard}>
-          <div style={S.btcTop}>
-            <div>
-              <div style={S.btcLbl}>◈ Reference Benchmark</div>
-              <div style={S.btcNm}>Bitcoin (BTC)</div>
-              <div style={S.btcSub}>The original. Every candidate is measured against this.</div>
+  const cg    = priceData?.[coin.cgId];
+  const total = calcTotal(coin.q13Scores);
+  const max   = calcMax();
+  const clr   = scoreColor(total, max);
+
+  const cur   = cg?.current_price;
+  const chg   = cg?.price_change_percentage_24h;
+  const mcap  = cg?.market_cap;
+  const spark = cg?.sparkline_in_7d?.price;
+  const ath   = getATHPercent(cur, coin.ath);
+  const sats  = getSatsPrice(cur, btcPrice);
+  const halv  = getHalvingCountdown(coin);
+  const gh    = commits?.[coin.id];
+
+  const TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'q13',      label: '13Q Breakdown' },
+    { id: 'flags',    label: '🚩 Red Flags' },
+    { id: 'ai',       label: '🤖 AI Verdict' },
+  ];
+
+  const fetchAI = async () => {
+    if (ai || aiLoad) return;
+    setAiLoad(true);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 350,
+          messages: [{
+            role: 'user',
+            content: `You are a brutally honest crypto researcher. Analyze ${coin.name} (${coin.ticker}) as a "Next Bitcoin" candidate.
+
+Facts:
+- Algorithm: ${coin.algo}
+- Supply: ${coin.supplyFull}  Hard cap: ${coin.hardCap ? 'YES' : 'NO — disqualifier'}
+- Age: ${new Date().getFullYear() - coin.launched} years  |  13Q Score: ${total}/100
+- Current price: ${formatPrice(cur)}  |  ATH: ${formatPrice(coin.ath)} (${ath}% from ATH)
+- Top red flags: ${coin.redFlags.slice(0, 3).join(' | ')}
+
+Write exactly 3 sentences. Start with one word verdict (STRONG / MODERATE / WEAK / CRITICAL). Be brutal and honest — no hype, no hedging.`
+          }]
+        })
+      });
+      const d = await res.json();
+      setAi(d?.content?.[0]?.text || 'Analysis unavailable. Check API key.');
+    } catch {
+      setAi('AI analysis unavailable. Add REACT_APP_ANTHROPIC_KEY to your .env file.');
+    } finally {
+      setAiLoad(false);
+    }
+  };
+
+  const statsGrid = [
+    { label: 'Market Cap',   value: formatMcap(mcap) },
+    { label: 'INR Price',    value: formatINR(cur) },
+    { label: 'Sats Price',   value: formatSats(sats) },
+    {
+      label: '% from ATH',
+      value: ath ? `${ath}%` : '—',
+      sub: `ATH ${formatPrice(coin.ath)} (${coin.athDate})`,
+      red: true,
+    },
+    {
+      label: 'Next Halving',
+      value: halv?.text || (coin.halvingType === 'tail' ? '∞ Tail' : coin.halvingNote ? 'Smooth' : 'N/A'),
+      sub: coin.halvingNote,
+    },
+    {
+      label: 'Dev Commits',
+      value: gh != null ? `${gh}/30d` : 'Loading…',
+      sub: 'GitHub last 30 days',
+      red: gh === 0 || gh < 5,
+    },
+    { label: 'Supply',       value: coin.supply, sub: coin.hardCap ? '✅ Hard Cap' : '❌ Infinite', capFlag: true },
+    { label: 'Algorithm',    value: coin.algo.split('/')[0].trim(), sub: coin.algo },
+  ];
+
+  return (
+    <div style={{
+      background: '#0d1117', border: `1px solid ${coin.color}33`,
+      borderRadius: 12, overflow: 'hidden',
+      transition: 'border-color 0.2s',
+    }}>
+      {/* ── Header ── */}
+      <div style={{
+        padding: '16px 20px',
+        background: `linear-gradient(135deg, ${coin.color}12, transparent 60%)`,
+        borderBottom: '1px solid #1e293b',
+        display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}>
+        {/* Rank + Name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 180 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 8, flexShrink: 0,
+            background: `${coin.color}20`, border: `2px solid ${coin.color}44`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: coin.color, fontWeight: 800, fontSize: 13,
+          }}>#{rank}</div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9' }}>{coin.name}</span>
+              {badge(coin.color, coin.ticker, 12)}
+              {!coin.hardCap && badge('#ef4444', '∞ SUPPLY', 9)}
             </div>
-            <div style={S.btcPr}>
-              {btcData ? (
-                <>
-                  <div style={S.btcUSD}>{fmtUSD(btcData.usd)}</div>
-                  <div style={S.btcINR}>{fmtINR(btcData.inr)}</div>
-                  {btcData.usd_24h_change !== undefined && (
-                    <div style={S.chg(btcData.usd_24h_change)}>
-                      {btcData.usd_24h_change >= 0 ? '▲' : '▼'} {Math.abs(btcData.usd_24h_change).toFixed(2)}%
-                    </div>
-                  )}
-                </>
-              ) : <div style={{ color:'#334155' }}>Loading...</div>}
+            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+              {coin.algo} · Est. {coin.launched} · {new Date().getFullYear() - coin.launched}yr
             </div>
-          </div>
-          <div style={S.cgrid}>
-            {[
-              ['13Q Score', '100/100 ✅'], ['Supply Cap', '21,000,000'],
-              ['Age', '15+ years'], ['Consensus', 'SHA-256 PoW'],
-              ['Lindy', 'Maximum'],   ['ETF', 'Approved USA ✅'],
-            ].map(([l, v]) => (
-              <div key={l} style={S.citem}>
-                <div style={S.clbl}>{l}</div>
-                <div style={S.cval}>{v}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:'9px', color:'#334155', marginTop:'10px', padding:'8px', background:'#06060e', borderRadius:'6px' }}>
-            💡 Best candidate scores 72/100 vs BTC's 100. The 28-point gap represents: 15 years of survival, all-time-high hash rate security, institutional ETF money, and a missing/anonymous founder. These cannot be manufactured.
           </div>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div style={S.tabs}>
-        {[
-          { k:'nextbtc',   l:`NextBTC (${COINS.filter(c=>c.category==='nextbtc').length})` },
-          { k:'all',       l:`All (${COINS.length})` },
-          { k:'watchlist', l:`Watchlist (${COINS.filter(c=>c.category==='watchlist').length})` },
-          { k:'altcoins',  l:`Altcoins (${COINS.filter(c=>c.category==='altcoin').length})` },
-          { k:'research',  l:'Research' },
-        ].map(t => (
-          <button key={t.k} style={S.tab(tab === t.k)} onClick={() => setTab(t.k)}>{t.l}</button>
+        {/* Score Ring */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          <ScoreRing score={total} max={max} size={68} />
+          <span style={{ fontSize: 9, color: clr, fontWeight: 700, letterSpacing: 1 }}>
+            {scoreLabel(total, max)}
+          </span>
+        </div>
+
+        {/* Price block */}
+        <div style={{ minWidth: 130 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', fontFamily: 'monospace' }}>
+            {formatPrice(cur)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+            {pill(chg >= 0 ? '#22c55e22' : '#ef444422', chg >= 0 ? '#22c55e' : '#ef4444',
+              `${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg || 0).toFixed(2)}%`)}
+            <span style={{ fontSize: 10, color: '#334155' }}>{formatINR(cur)}</span>
+          </div>
+          <Sparkline data={spark} width={92} height={28} />
+        </div>
+      </div>
+
+      {/* ── Stats Grid ── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+        gap: 1, background: '#111827', borderBottom: '1px solid #1e293b',
+      }}>
+        {statsGrid.map(s => (
+          <div key={s.label} style={{ padding: '9px 14px', background: '#0d1117' }}>
+            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>
+              {s.label}
+            </div>
+            <div style={{
+              fontSize: 13, fontWeight: 700, fontFamily: 'monospace',
+              color: s.red ? '#f87171' : '#f1f5f9',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{s.value}</div>
+            {s.sub && (
+              <div style={{
+                fontSize: 9, marginTop: 1,
+                color: s.capFlag
+                  ? (coin.hardCap ? '#22c55e' : '#ef4444')
+                  : '#334155',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{s.sub}</div>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Main Content */}
-      {tab === 'research' ? (
-        <ResearchTab />
-      ) : (
-        <div style={S.list}>
-          {loading && tabCoins.length === 0 && (
-            <div style={S.empty}>Fetching live prices from CoinGecko…</div>
-          )}
-          {tabCoins.map((coin, i) => (
-            <CoinCard key={coin.id} coin={coin} rank={i + 1} />
-          ))}
-          {!loading && tabCoins.length === 0 && (
-            <div style={S.empty}>No coins in this category.</div>
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div style={S.footer}>
-        ⚠️ IMPORTANT: This is a personal research project, not a financial product. Scores represent one researcher's opinion and may be wrong. Cryptocurrency markets are unregulated, highly volatile, and speculative. Past scores do not predict future price performance. "Next Bitcoin" is a research framework, not a guarantee. Always consult a qualified financial advisor before making investment decisions. Data sourced from public APIs (CoinGecko, alternative.me). AI analysis powered by Anthropic Claude.
-        <br /><br />
-        Built for educational research purposes only. Not affiliated with any coin project.
+      {/* ── Tabs ── */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', background: '#080c14', overflowX: 'auto' }}>
+        {TABS.map(t => (
+          <button key={t.id}
+            onClick={() => { setTab(t.id); if (t.id === 'ai') fetchAI(); }}
+            style={{
+              padding: '8px 14px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              background: 'none', border: 'none',
+              color: tab === t.id ? coin.color : '#475569',
+              borderBottom: `2px solid ${tab === t.id ? coin.color : 'transparent'}`,
+              transition: 'color 0.15s', whiteSpace: 'nowrap',
+            }}>{t.label}</button>
+        ))}
       </div>
 
+      {/* ── Tab Content ── */}
+      <div style={{ padding: '14px 20px', minHeight: 90 }}>
+        {/* OVERVIEW */}
+        {tab === 'overview' && (
+          <div>
+            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.7, marginBottom: 10 }}>
+              {coin.verdict}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {coin.greenFlags.slice(0, 4).map((f, i) => (
+                <div key={i} style={{
+                  fontSize: 11, color: '#86efac', background: '#22c55e0e',
+                  border: '1px solid #22c55e20', borderRadius: 6, padding: '3px 8px',
+                }}>{f}</div>
+              ))}
+            </div>
+            {halv && (
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, color: '#475569' }}>Next halving in</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', fontFamily: 'monospace' }}>
+                  {halv.text}
+                </span>
+                <div style={{ flex: 1, maxWidth: 140 }}>
+                  <Bar val={halv.progress} max={100} color="#f59e0b" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 13Q BREAKDOWN */}
+        {tab === 'q13' && (
+          <div>
+            <div style={{ fontSize: 11, color: '#334155', marginBottom: 10 }}>
+              13Q Score: {' '}
+              <span style={{ color: clr, fontWeight: 700, fontFamily: 'monospace' }}>
+                {total}/{max}
+              </span>
+              {' '}— Badge = sum of all criteria below (no hidden manual override)
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {Object.entries(Q_MAX).map(([key, maxPts]) => {
+                const val = coin.q13Scores[key];
+                const qClr = scoreColor(val, maxPts);
+                const { label, icon, desc } = Q_META[key];
+                return (
+                  <div key={key} style={{
+                    display: 'grid', gridTemplateColumns: '28px 1fr 38px',
+                    gap: 8, alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 10, color: '#334155', fontFamily: 'monospace', fontWeight: 700 }}>
+                      {icon}
+                    </span>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{label}</span>
+                      </div>
+                      <Bar val={val} max={maxPts} color={qClr} />
+                      <div style={{ fontSize: 9, color: '#1e293b', marginTop: 1 }}>{desc}</div>
+                    </div>
+                    <span style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 700, textAlign: 'right',
+                      color: qClr,
+                    }}>{val}/{maxPts}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* RED FLAGS */}
+        {tab === 'flags' && (
+          <div>
+            <div style={{ fontSize: 11, color: '#334155', marginBottom: 8 }}>
+              Critical issues preventing {coin.ticker} from being "Next Bitcoin"
+            </div>
+            {coin.redFlags.map((f, i) => (
+              <div key={i} style={{
+                fontSize: 11, color: '#fca5a5', background: '#ef444410',
+                border: '1px solid #ef444420', borderRadius: 7, padding: '7px 10px',
+                lineHeight: 1.5, marginBottom: 5,
+              }}>{f}</div>
+            ))}
+            <div style={{ borderTop: '1px solid #1e293b', paddingTop: 8, marginTop: 8 }}>
+              <div style={{ fontSize: 10, color: '#334155', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                What it does right
+              </div>
+              {coin.greenFlags.map((f, i) => (
+                <div key={i} style={{
+                  fontSize: 11, color: '#86efac', background: '#22c55e0d',
+                  border: '1px solid #22c55e20', borderRadius: 7, padding: '6px 10px',
+                  lineHeight: 1.5, marginBottom: 4,
+                }}>{f}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI VERDICT */}
+        {tab === 'ai' && (
+          <div>
+            {aiLoad && (
+              <div style={{ fontSize: 12, color: '#475569', fontStyle: 'italic' }}>
+                Analyzing {coin.name} via Claude API…
+              </div>
+            )}
+            {!aiLoad && !ai && (
+              <button onClick={fetchAI} style={{
+                padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${coin.color}44`, background: `${coin.color}12`,
+                color: coin.color, fontSize: 12, fontWeight: 600,
+              }}>🤖 Get AI Verdict for {coin.ticker}</button>
+            )}
+            {ai && (
+              <div style={{
+                fontSize: 12, color: '#cbd5e1', lineHeight: 1.8,
+                background: '#080c14', borderRadius: 8, padding: '12px 14px',
+                border: '1px solid #1e2d47',
+              }}>{ai}</div>
+            )}
+            <div style={{ fontSize: 10, color: '#1e293b', marginTop: 8 }}>
+              Powered by Claude Sonnet. Not financial advice.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── COMPARISON TABLE ──────────────────────────────────────────────
+function CompareTable({ coins, priceData, btcPrice }) {
+  return (
+    <div style={{
+      background: '#0d1117', border: '1px solid #1e293b', borderRadius: 12, overflowX: 'auto',
+    }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+        <thead>
+          <tr style={{ background: '#111827', borderBottom: '2px solid #1e293b' }}>
+            {['#', 'Coin', 'Score', 'Price', '24h Δ', 'INR', 'Mcap', 'Sats', 'from ATH', 'Cap', 'Age', 'Dev/30d'].map(h => (
+              <th key={h} style={{
+                padding: '10px 12px', textAlign: 'left', color: '#334155',
+                fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5,
+                fontWeight: 700, whiteSpace: 'nowrap',
+              }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {coins.map((coin, i) => {
+            const cg   = priceData?.[coin.cgId];
+            const cur  = cg?.current_price;
+            const chg  = cg?.price_change_percentage_24h;
+            const tot  = calcTotal(coin.q13Scores);
+            const max  = calcMax();
+            const clr  = scoreColor(tot, max);
+            return (
+              <tr key={coin.id} style={{
+                borderBottom: '1px solid #0f172a',
+                background: i % 2 === 0 ? '#0d1117' : '#090d16',
+              }}>
+                <td style={{ padding: '9px 12px', color: '#334155', fontFamily: 'monospace' }}>{i + 1}</td>
+                <td style={{ padding: '9px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: 99, background: coin.color, flexShrink: 0 }} />
+                    <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{coin.ticker}</span>
+                    <span style={{ color: '#334155' }}>{coin.name}</span>
+                  </div>
+                </td>
+                <td style={{ padding: '9px 12px' }}>
+                  <span style={{
+                    fontFamily: 'monospace', fontWeight: 800, color: clr,
+                    background: `${clr}18`, padding: '2px 6px', borderRadius: 4, fontSize: 12,
+                  }}>{tot}</span>
+                </td>
+                <td style={{ padding: '9px 12px', fontFamily: 'monospace', color: '#f1f5f9', whiteSpace: 'nowrap' }}>
+                  {formatPrice(cur)}
+                </td>
+                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                  <span style={{ color: chg >= 0 ? '#22c55e' : '#ef4444', fontFamily: 'monospace' }}>
+                    {chg >= 0 ? '▲' : '▼'}{Math.abs(chg || 0).toFixed(2)}%
+                  </span>
+                </td>
+                <td style={{ padding: '9px 12px', color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {formatINR(cur)}
+                </td>
+                <td style={{ padding: '9px 12px', color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {formatMcap(cg?.market_cap)}
+                </td>
+                <td style={{ padding: '9px 12px', color: '#475569', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {formatSats(getSatsPrice(cur, btcPrice))}
+                </td>
+                <td style={{ padding: '9px 12px', color: '#f87171', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {getATHPercent(cur, coin.ath)}%
+                </td>
+                <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                  {coin.hardCap
+                    ? <span style={{ color: '#22c55e' }}>✅</span>
+                    : <span style={{ color: '#ef4444' }}>❌</span>}
+                </td>
+                <td style={{ padding: '9px 12px', color: '#475569', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {new Date().getFullYear() - coin.launched}y
+                </td>
+                <td style={{ padding: '9px 12px', color: '#475569', fontFamily: 'monospace', textAlign: 'center' }}>
+                  —
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── RESEARCH SECTION ──────────────────────────────────────────────
+function Research() {
+  const sections = [
+    {
+      title: '🕰️ The Lindy Effect Paradox',
+      body: 'Bitcoin has 15+ years of survival. Every year a system survives, it earns credibility for surviving longer. KAS (3 years) would need to survive to 2040 without incident to approach BTC\'s Lindy score. No other PoW coin has endured 15 years of adversarial pressure at Bitcoin\'s scale.',
+    },
+    {
+      title: '🌐 The Network Effect Moat',
+      body: 'Bitcoin has 50M+ holders, $600B+ market cap, ETF products, custodians, institutional desks. No PoW coin can replicate this without Bitcoin dying first. The "Next Bitcoin" might not replace Bitcoin — it might serve a different niche entirely.',
+    },
+    {
+      title: '🔒 The Hard Cap Requirement',
+      body: 'Any "Digital Gold" must have a fixed hard cap. XMR\'s tail emission immediately disqualifies it as "Digital Gold" regardless of its technical excellence. Supply certainty is the foundation of sound money, and compromising it is fatal to the thesis.',
+    },
+    {
+      title: '⚖️ The Fair Launch Standard',
+      body: 'Satoshi mined openly, gave up keys, and disappeared. ZEC\'s founders reward, BCH\'s chain splits, and any ICO structure immediately disqualify coins by this standard. The "Next Bitcoin" must emerge from the grassroots, not a company with a treasury.',
+    },
+    {
+      title: '🛡️ The Hash Rate Independence Problem',
+      body: 'Bitcoin\'s hash rate is ~600 EH/s. BCH shares SHA-256 with BTC — a 51% attack requires <0.1% of BTC\'s power. Any "Next Bitcoin" needs an independent, growing hash rate on a unique algorithm that cannot be trivially attacked.',
+    },
+    {
+      title: '📊 Honest Scoring Note',
+      body: 'Every score in this tracker is based on publicly verifiable data: GitHub commit counts, CoinGecko API, exchange listings, and protocol documentation. Scores represent our research, not financial advice. We update them when new data emerges. Q2 (Hard Cap) alone disqualifies several coins for the "Next Bitcoin" thesis.',
+    },
+    {
+      title: '⚠️ Honest Conclusion',
+      body: 'No current PoW coin meets all 13 criteria at Bitcoin\'s level. KAS comes closest technically but is dangerously young. LTC has Lindy but is dying. The honest answer: Bitcoin is almost certainly irreplaceable as "the" Bitcoin. What exists are specialized PoW coins with unique but narrower value propositions.',
+    },
+  ];
+
+  return (
+    <div style={{ background: '#0d1117', border: '1px solid #1e293b', borderRadius: 12, padding: '20px 24px' }}>
+      <h2 style={{ color: '#f59e0b', fontSize: 16, fontWeight: 800, marginBottom: 4, marginTop: 0 }}>
+        📖 Why "Next Bitcoin" is Almost Impossible
+      </h2>
+      <p style={{ fontSize: 11, color: '#334155', marginBottom: 16 }}>
+        Honest research — reading the evidence rather than following the hype.
+      </p>
+      {sections.map((s, i) => (
+        <div key={i} style={{
+          background: '#080c14', border: '1px solid #1e293b',
+          borderRadius: 8, padding: '12px 16px', marginBottom: 10,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>{s.title}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.7 }}>{s.body}</div>
+        </div>
+      ))}
+      <div style={{
+        background: '#0a1628', border: '1px solid #f59e0b33',
+        borderRadius: 8, padding: '12px 16px', marginTop: 4,
+        fontSize: 11, color: '#64748b', lineHeight: 1.6,
+      }}>
+        <strong style={{ color: '#f59e0b' }}>⚠️ Disclaimer: </strong>
+        This tracker is for research and educational purposes only. Scores are opinion-based on
+        publicly available data. Nothing here is financial advice. Cryptocurrency investments carry
+        extreme risk of total loss. Always do your own research (DYOR).
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  MAIN PAGE COMPONENT
+// ══════════════════════════════════════════════════════════════════
+export default function NextBTC() {
+  const [view, setView] = useState('cards'); // 'cards' | 'compare' | 'research'
+
+  const { data: priceData, loading, error, lastUpdated, refetch } = usePriceData();
+  const fearGreed = useFearGreed();
+  const commits   = useGitHubCommits();
+
+  const btcPrice = priceData?.bitcoin?.current_price;
+
+  // Calculate BTC dominance from loaded data
+  const totalMcap = Object.values(priceData).reduce((s, c) => s + (c.market_cap || 0), 0);
+  const btcDomPct = totalMcap && priceData?.bitcoin?.market_cap
+    ? ((priceData.bitcoin.market_cap / totalMcap) * 100).toFixed(1)
+    : null;
+
+  // Sort coins by 13Q total, highest first
+  const sortedCoins = [...COINS].sort(
+    (a, b) => calcTotal(b.q13Scores) - calcTotal(a.q13Scores)
+  );
+
+  const VIEWS = [
+    { id: 'cards',    label: '🃏 Cards' },
+    { id: 'compare',  label: '📊 Compare' },
+    { id: 'research', label: '📖 Research' },
+  ];
+
+  return (
+    <div style={{
+      background: '#080c14', minHeight: '100vh', color: '#e2e8f0',
+      fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+      paddingBottom: 80,
+    }}>
+
+      {/* ── Sticky Header ── */}
+      <div style={{
+        background: 'linear-gradient(180deg, #0a0f1e, #080c14)',
+        borderBottom: '1px solid #111827',
+        padding: '16px 24px 0',
+        position: 'sticky', top: 0, zIndex: 50,
+      }}>
+        <div style={{
+          maxWidth: 1200, margin: '0 auto',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 12,
+        }}>
+          {/* Title */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9' }}>₿ NextBTC Tracker</span>
+              {badge('#f59e0b', 'v8 TRANSPARENT', 9)}
+              {badge('#22c55e', '13Q HONEST', 9)}
+            </div>
+            <div style={{ fontSize: 11, color: '#334155', marginTop: 3 }}>
+              PoW coins ranked by 13Q score — badge = actual sum (no mismatch)
+            </div>
+          </div>
+
+          {/* Live Stats + Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            {btcDomPct && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b', fontFamily: 'monospace' }}>
+                  {btcDomPct}%
+                </div>
+                <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>BTC DOM</div>
+              </div>
+            )}
+            {fearGreed && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'monospace',
+                  color: parseInt(fearGreed.value) < 30 ? '#ef4444'
+                       : parseInt(fearGreed.value) < 50 ? '#f97316' : '#22c55e' }}>
+                  {fearGreed.value}
+                </div>
+                <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {fearGreed.value_classification}
+                </div>
+              </div>
+            )}
+            {lastUpdated && (
+              <div style={{ fontSize: 10, color: '#1e293b', fontFamily: 'monospace' }}>
+                {lastUpdated.toLocaleTimeString()}
+              </div>
+            )}
+            <button onClick={refetch} style={{
+              padding: '5px 10px', borderRadius: 6, border: '1px solid #1e293b',
+              background: '#0d1117', color: '#475569', fontSize: 10, cursor: 'pointer',
+              fontFamily: 'monospace', letterSpacing: 0.3,
+            }}>⟳ Refresh</button>
+          </div>
+        </div>
+
+        {/* View Tabs */}
+        <div style={{ maxWidth: 1200, margin: '10px auto 0', display: 'flex', gap: 4 }}>
+          {VIEWS.map(v => (
+            <button key={v.id} onClick={() => setView(v.id)} style={{
+              padding: '7px 14px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer',
+              background: view === v.id ? '#0d1117' : 'transparent',
+              color: view === v.id ? '#f1f5f9' : '#334155',
+              borderBottom: view === v.id ? '2px solid #f59e0b' : '2px solid transparent',
+              fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+            }}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Main Content ── */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 16px 0' }}>
+
+        {/* Error Banner */}
+        {error && (
+          <div style={{
+            background: '#ef444412', border: '1px solid #ef444430',
+            borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+            fontSize: 11, color: '#fca5a5',
+          }}>
+            ⚠️ CoinGecko API: {error} — live price data unavailable. 13Q scores are still accurate.
+            {' '}<button onClick={refetch} style={{
+              background: 'none', border: 'none', color: '#f87171', cursor: 'pointer',
+              fontSize: 11, textDecoration: 'underline', padding: 0,
+            }}>Retry</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#1e293b', fontSize: 13 }}>
+            Loading live data from CoinGecko…
+          </div>
+        ) : (
+          <>
+            {/* BTC Reference Card — shown in all views */}
+            <BTCCard priceData={priceData} fearGreed={fearGreed} btcDomPct={btcDomPct} />
+
+            {/* CARDS VIEW */}
+            {view === 'cards' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  fontSize: 10, color: '#1e293b', letterSpacing: 0.3, marginBottom: 2,
+                }}>
+                  <span>Sorted highest → lowest 13Q score</span>
+                  <span>Scores: badge = q13 criterion sum (verified)</span>
+                </div>
+                {sortedCoins.map((coin, i) => (
+                  <CoinCard key={coin.id} coin={coin} priceData={priceData}
+                    btcPrice={btcPrice} commits={commits} rank={i + 1} />
+                ))}
+              </div>
+            )}
+
+            {/* COMPARE VIEW */}
+            {view === 'compare' && (
+              <CompareTable coins={sortedCoins} priceData={priceData} btcPrice={btcPrice} />
+            )}
+
+            {/* RESEARCH VIEW */}
+            {view === 'research' && <Research />}
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        maxWidth: 1200, margin: '40px auto 0', padding: '16px 16px 0',
+        borderTop: '1px solid #0d1117',
+        display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+        fontSize: 10, color: '#1e293b', fontFamily: 'monospace',
+      }}>
+        <span>NextBTC Tracker v8 · 13Q Research Edition</span>
+        <span>Data: CoinGecko · GitHub API · Alternative.me · Not financial advice</span>
+      </div>
     </div>
   );
 }
